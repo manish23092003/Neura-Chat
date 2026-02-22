@@ -1,0 +1,53 @@
+[2026-01-02T15:52:17.311Z] getProjectById: Found 0 messages for project 69343c90b100375e6886c8ba
+[2026-01-02T15:52:21.351Z] Attempting to save message to project 69343c90b100375e6886c8ba
+[2026-01-02T15:52:21.382Z] Error saving message: Cast to embedded failed for value "{
+  sender: {
+    email: 'manishks23092003@gmail.com',
+    iat: 1767367814,
+    exp: 1767454214
+  },
+  message: 'Hello',
+  timestamp: '2026-01-02T15:52:21.350Z'
+}" (type Object) at path "messages" because of "CastError"
+[2026-01-02T15:52:26.154Z] getProjectById: Found 0 messages for project 69343c90b100375e6886c8ba
+[2026-01-02T15:52:29.890Z] getProjectById: Found 0 messages for project 695794e6c166636a0c50ca5f
+[2026-01-02T15:52:34.016Z] Attempting to save message to project 695794e6c166636a0c50ca5f
+[2026-01-02T15:52:34.026Z] Error saving message: Cast to embedded failed for value "{
+  sender: {
+    email: 'manishks23092003@gmail.com',
+    iat: 1767367814,
+    exp: 1767454214
+  },
+  message: 'Hello',
+  timestamp: '2026-01-02T15:52:34.016Z'
+}" (type Object) at path "messages" because of "CastError"
+[2026-01-02T15:52:40.155Z] getProjectById: Found 0 messages for project 695794e6c166636a0c50ca5f
+[2026-01-02T15:52:54.012Z] getProjectById: Found 0 messages for project 69343c90b100375e6886c8ba
+[2026-01-02T15:52:58.376Z] Attempting to save message to project 69343c90b100375e6886c8ba
+[2026-01-02T15:52:58.393Z] Message saved. Project now has 1 messages.
+[2026-01-02T15:53:03.715Z] getProjectById: Found 1 messages for project 69343c90b100375e6886c8ba
+[2026-01-02T15:53:06.649Z] getProjectById: Found 1 messages for project 69352b3846d1fab252d369c5
+[2026-01-02T15:53:11.428Z] Attempting to save message to project 69352b3846d1fab252d369c5
+[2026-01-02T15:53:11.436Z] Message saved. Project now has 2 messages.
+[2026-01-02T15:53:16.483Z] Attempting to save message to project 69352b3846d1fab252d369c5
+[2026-01-02T15:53:16.495Z] Message saved. Project now has 3 messages.
+[2026-01-02T15:53:21.613Z] getProjectById: Found 3 messages for project 69352b3846d1fab252d369c5
+[2026-01-02T15:53:24.892Z] getProjectById: Found 0 messages for project 695794e6c166636a0c50ca5f
+[2026-01-02T15:53:28.091Z] getProjectById: Found 1 messages for project 69343c90b100375e6886c8ba
+[2026-01-02T15:53:30.602Z] getProjectById: Found 0 messages for project 695794e6c166636a0c50ca5f
+[2026-01-02T15:53:36.128Z] Attempting to save message to project 695794e6c166636a0c50ca5f
+[2026-01-02T15:53:36.137Z] Message saved. Project now has 1 messages.
+[2026-01-02T15:53:38.493Z] getProjectById: Found 1 messages for project 695794e6c166636a0c50ca5f
+[2026-01-02T15:53:56.637Z] getProjectById: Found 1 messages for project 69343c90b100375e6886c8ba
+[2026-01-02T15:53:59.932Z] Attempting to save message to project 69343c90b100375e6886c8ba
+[2026-01-02T15:53:59.941Z] Message saved. Project now has 2 messages.
+[2026-01-02T15:54:05.680Z] getProjectById: Found 2 messages for project 69343c90b100375e6886c8ba
+[2026-01-02T15:54:12.128Z] Attempting to save message to project 69343c90b100375e6886c8ba
+[2026-01-02T15:54:12.137Z] Message saved. Project now has 3 messages.
+[2026-01-02T15:54:16.313Z] getProjectById: Found 3 messages for project 69343c90b100375e6886c8ba
+[2026-01-02T15:54:25.959Z] getProjectById: Found 3 messages for project 69343c90b100375e6886c8ba
+[2026-01-02T15:57:08.826Z] Attempting to save message to project 69343c90b100375e6886c8ba
+[2026-01-02T15:57:08.861Z] Message saved. Project now has 4 messages.
+[2026-01-02T15:57:10.123Z] AI Error Message saved.
+[2026-01-02T15:57:15.700Z] getProjectById: Found 5 messages for project 69343c90b100375e6886c8ba
+[2026-01-02T15:57:44.874Z] getProjectById: Found 5 messages for project 69343c90b100375e6886c8ba
