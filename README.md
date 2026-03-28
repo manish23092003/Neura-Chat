@@ -37,8 +37,8 @@ Git, GitHub, VS Code
 
 ```id="code2"
 NeuraChat/
-│── frontend/        # User interface
-│── backend/         # Server and API logic
+│── frontend/      
+│── backend/         
 │── .gitignore
 │── README.md
 ```
