@@ -1,6 +1,7 @@
 import projectModel from '../models/project.model.js';
 import * as projectService from '../services/project.service.js';
 import userModel from '../models/user.model.js';
+import messageModel from '../models/message.model.js';
 import { validationResult } from 'express-validator';
 
 
@@ -128,6 +129,19 @@ export const getProjectById = async (req, res) => {
         res.status(400).json({ error: err.message })
     }
 
+}
+
+export const getMessages = async (req, res) => {
+    const { projectId } = req.params;
+    try {
+        const messages = await messageModel.find({ project: projectId }).sort({ timestamp: 1 });
+        return res.status(200).json({
+            messages
+        });
+    } catch (err) {
+        console.log(err);
+        res.status(400).json({ error: err.message });
+    }
 }
 
 export const updateFileTree = async (req, res) => {
@@ -306,25 +320,6 @@ export const toggleTaskCompletion = async (req, res) => {
         const project = await projectService.toggleTaskCompletion({
             projectId,
             taskId,
-            userId: loggedInUser._id
-        });
-
-        return res.status(200).json({ project });
-
-    } catch (err) {
-        console.log(err);
-        res.status(400).json({ error: err.message });
-    }
-}
-
-// Clear chat
-export const clearChat = async (req, res) => {
-    try {
-        const { projectId } = req.params;
-        const loggedInUser = await userModel.findOne({ email: req.user.email });
-
-        const project = await projectService.clearChat({
-            projectId,
             userId: loggedInUser._id
         });
 

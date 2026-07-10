@@ -1,237 +1,452 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import Button from '../components/Button'
+import Navbar from '../components/Navbar'
+import Footer from '../components/Footer'
+import FeatureCard from '../components/FeatureCard'
+import RobotSkeleton from '../components/RobotSkeleton'
+import LiveCodeDemo from '../components/LiveCodeDemo'
+import CodeRainBackground from '../components/CodeRainBackground'
 
 const Landing = () => {
+    const [robotState, setRobotState] = useState('idle')
+    const [robotMsg, setRobotMsg] = useState('Click a command below to control my behaviors!')
+    const [robotColor, setRobotColor] = useState('purple')
+
+    const triggerAction = (actionType) => {
+        setRobotState(actionType)
+        if (actionType === 'thinking') {
+            setRobotMsg('Scanning landing page… All modules running at peak capacity! ⚡')
+        } else if (actionType === 'success') {
+            setRobotMsg('Welcome to NeuraChat! High-five, developer! 🚀')
+        } else if (actionType === 'error') {
+            setRobotMsg('Self-destruct sequence initialized! Just joking, system stable. 🤖')
+        } else {
+            setRobotMsg("Hello! Let's build the future of collaborative code together. 👋")
+        }
+        setTimeout(() => {
+            setRobotState('idle')
+        }, 3000)
+    }
+
+    const features = [
+        {
+            icon: 'ri-team-line',
+            title: 'Real-time Collaboration',
+            description: 'Work together seamlessly with your team in real-time. See changes instantly and collaborate effortlessly.'
+        },
+        {
+            icon: 'ri-robot-line',
+            title: 'AI Code Assistant',
+            description: 'Get intelligent code suggestions and automated assistance powered by advanced AI technology.'
+        },
+        {
+            icon: 'ri-folder-line',
+            title: 'Project Management',
+            description: 'Organize your projects efficiently with intuitive tools and streamlined workflows.'
+        },
+        {
+            icon: 'ri-shield-check-line',
+            title: 'Secure & Private',
+            description: 'Enterprise-grade security with end-to-end encryption to keep your code safe and private.'
+        },
+        {
+            icon: 'ri-file-upload-line',
+            title: 'File Sharing',
+            description: 'Share files instantly with your team. Support for images, documents, and code files.'
+        },
+        {
+            icon: 'ri-message-3-line',
+            title: 'Built-in Chat',
+            description: 'Communicate with your team without leaving the platform. Integrated messaging for seamless collaboration.'
+        }
+    ]
+
+    const steps = [
+        {
+            number: '01',
+            title: 'Create Account',
+            description: 'Sign up in seconds with email or social login. No credit card required.'
+        },
+        {
+            number: '02',
+            title: 'Create Project',
+            description: 'Start your first project and set up your workspace in minutes.'
+        },
+        {
+            number: '03',
+            title: 'Invite Team',
+            description: 'Add team members and start collaborating together instantly.'
+        },
+        {
+            number: '04',
+            title: 'Build Together',
+            description: 'Code, chat, and ship faster with AI-powered collaboration tools.'
+        }
+    ]
+
+    const testimonials = [
+        {
+            name: 'Sarah Johnson',
+            role: 'Senior Developer',
+            company: 'TechCorp',
+            avatar: 'SJ',
+            content: 'NeuraChat has transformed how our team collaborates. The AI assistant is incredibly helpful and saves us hours every day.',
+            rating: 5
+        },
+        {
+            name: 'Michael Chen',
+            role: 'CTO',
+            company: 'StartupXYZ',
+            avatar: 'MC',
+            content: 'Best collaboration platform we\'ve used. The real-time features and file sharing make remote work seamless.',
+            rating: 5
+        },
+        {
+            name: 'Emily Rodriguez',
+            role: 'Product Manager',
+            company: 'InnovateLabs',
+            avatar: 'ER',
+            content: 'The project management tools are intuitive and powerful. Our team productivity has increased by 40%.',
+            rating: 5
+        }
+    ]
+
     return (
-        <div className="min-h-screen bg-slate-950 text-white overflow-hidden">
-            {/* Navbar */}
-            <nav className="fixed w-full z-50 glass border-b border-white/10">
-                <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-violet-600 flex items-center justify-center shadow-lg hover:scale-105 transition-transform">
-                            <i className="ri-code-s-slash-line text-white text-xl"></i>
+        <div className="min-h-screen relative galaxy-bg">
+            <Navbar />
+
+            {/* Background Layers */}
+            <div className="fixed inset-0 z-0 pointer-events-none" />
+            <CodeRainBackground />
+
+            {/* Content Layer */}
+            <div className="relative z-10">
+
+                {/* Hero Section */}
+                <section 
+                    className="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden"
+                    style={{
+                        backgroundImage: 'radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px)',
+                        backgroundSize: '24px 24px'
+                    }}
+                >
+                    <div className="max-w-7xl mx-auto">
+                        <div className="text-center">
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.6 }}
+                            >
+                                <h1 className="text-5xl md:text-8xl font-black text-white tracking-tight leading-[1.05] mb-6">
+                                    AI-Powered
+                                    <br />
+                                    <span className="bg-gradient-to-b from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
+                                        Collaborative Development
+                                    </span>
+                                </h1>
+                            </motion.div>
+
+                            <motion.p
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.6, delay: 0.2 }}
+                                className="text-xl text-slate-300 mb-8 max-w-3xl mx-auto"
+                            >
+                                Build better software together with intelligent code collaboration,
+                                real-time messaging, and AI-powered assistance.
+                            </motion.p>
+
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.6, delay: 0.4 }}
+                                className="flex flex-col sm:flex-row gap-4 justify-center"
+                            >
+                                <Link
+                                    to="/register"
+                                    className="nc-btn nc-btn-primary px-8 py-4 text-base font-bold transition-all shadow-md active:scale-95"
+                                    style={{ height: 'auto' }}
+                                >
+                                    Get Started Free
+                                </Link>
+                                <a
+                                    href="#features"
+                                    className="nc-btn nc-btn-secondary px-8 py-4 text-base font-semibold transition-all active:scale-95"
+                                    style={{ height: 'auto' }}
+                                >
+                                    Learn More
+                                </a>
+                            </motion.div>
+
+                            {/* Robot Skeleton - Interactive */}
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ duration: 0.8, delay: 0.6 }}
+                                className="mt-12 mb-2 flex justify-center"
+                            >
+                                <div className="scale-125 md:scale-[1.45] origin-center py-6">
+                                    <RobotSkeleton state={robotState} message={robotMsg} colorTheme={robotColor} />
+                                </div>
+                            </motion.div>
+
+                            {/* Interactive Control Console */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 15 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.8, delay: 0.7 }}
+                                className="mt-6 max-w-lg mx-auto p-5 rounded-[22px] text-center relative overflow-hidden"
+                                style={{
+                                    background: 'rgba(9, 9, 15, 0.75)',
+                                    border: '1px solid rgba(255, 255, 255, 0.06)',
+                                    boxShadow: '0 24px 64px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,255,255,0.05)',
+                                    backdropFilter: 'blur(20px)'
+                                }}
+                            >
+                                <div className="absolute top-0 left-0 w-full h-[2.5px] bg-gradient-to-r from-purple-500 via-cyan-500 to-emerald-500 opacity-60" />
+                                
+                                <h4 className="text-[10px] font-[700] uppercase tracking-[0.2em] text-slate-400 mb-3.5">AI DRONE CONTROL PANEL</h4>
+                                
+                                {/* Quick Trigger Command Grid */}
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                                    <button 
+                                        onClick={() => triggerAction('typing')}
+                                        className="py-2.5 px-3 bg-[#111119] hover:bg-[#161622] border border-[#27273F] hover:border-purple-500/50 text-[10px] font-[700] rounded-xl text-slate-300 hover:text-white transition-all font-mono active:scale-95 cursor-pointer shadow-sm"
+                                    >
+                                        <i className="ri-hand-line mr-1 text-purple-400" /> Wave Hello
+                                    </button>
+                                    <button 
+                                        onClick={() => triggerAction('thinking')}
+                                        className="py-2.5 px-3 bg-[#111119] hover:bg-[#161622] border border-[#27273F] hover:border-purple-500/50 text-[10px] font-[700] rounded-xl text-slate-300 hover:text-white transition-all font-mono active:scale-95 cursor-pointer shadow-sm"
+                                    >
+                                        <i className="ri-radar-line mr-1 text-purple-400" /> Run Scan
+                                    </button>
+                                    <button 
+                                        onClick={() => triggerAction('error')}
+                                        className="py-2.5 px-3 bg-[#111119] hover:bg-[#161622] border border-[#27273F] hover:border-purple-500/50 text-[10px] font-[700] rounded-xl text-slate-300 hover:text-white transition-all font-mono active:scale-95 cursor-pointer shadow-sm"
+                                    >
+                                        <i className="ri-fire-line mr-1 text-purple-400" /> Overload
+                                    </button>
+                                    <button 
+                                        onClick={() => triggerAction('success')}
+                                        className="py-2.5 px-3 bg-[#111119] hover:bg-[#161622] border border-[#27273F] hover:border-purple-500/50 text-[10px] font-[700] rounded-xl text-slate-300 hover:text-white transition-all font-mono active:scale-95 cursor-pointer shadow-sm"
+                                    >
+                                        <i className="ri-rocket-line mr-1 text-purple-400" /> Launch
+                                    </button>
+                                </div>
+
+                                {/* Live Color Customization */}
+                                <div className="flex items-center justify-center gap-3 pt-3.5 border-t border-white/5">
+                                    <span className="text-[9px] uppercase font-[700] tracking-[0.15em] text-slate-500">ACCENT SPECTRAL:</span>
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => setRobotColor('purple')}
+                                            className={`w-5 h-5 rounded-full bg-purple-600 border-2 transition-transform cursor-pointer shadow-[0_0_8px_rgba(139,92,246,0.5)] ${robotColor === 'purple' ? 'border-white scale-110' : 'border-transparent hover:scale-105'}`}
+                                            title="Purple LED"
+                                        />
+                                        <button 
+                                            onClick={() => setRobotColor('cyan')}
+                                            className={`w-5 h-5 rounded-full bg-cyan-500 border-2 transition-transform cursor-pointer shadow-[0_0_8px_rgba(6,182,212,0.5)] ${robotColor === 'cyan' ? 'border-white scale-110' : 'border-transparent hover:scale-105'}`}
+                                            title="Cyan LED"
+                                        />
+                                        <button 
+                                            onClick={() => setRobotColor('green')}
+                                            className={`w-5 h-5 rounded-full bg-emerald-500 border-2 transition-transform cursor-pointer shadow-[0_0_8px_rgba(16,185,129,0.5)] ${robotColor === 'green' ? 'border-white scale-110' : 'border-transparent hover:scale-105'}`}
+                                            title="Green LED"
+                                        />
+                                        <button 
+                                            onClick={() => setRobotColor('gold')}
+                                            className={`w-5 h-5 rounded-full bg-amber-500 border-2 transition-transform cursor-pointer shadow-[0_0_8px_rgba(245,158,11,0.5)] ${robotColor === 'gold' ? 'border-white scale-110' : 'border-transparent hover:scale-105'}`}
+                                            title="Gold LED"
+                                        />
+                                    </div>
+                                </div>
+                            </motion.div>
                         </div>
-                        <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
-                            NeuraChat
-                        </span>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <Link to="/login">
-                            <Button variant="secondary" className="!bg-transparent hover:!bg-white/10 border border-white/10">
-                                Sign In
-                            </Button>
-                        </Link>
-                        <Link to="/register">
-                            <Button variant="primary" className="shadow-lg shadow-purple-500/25">
-                                Get Started
-                            </Button>
-                        </Link>
-                    </div>
-                </div>
-            </nav>
+                </section>
 
-            {/* Hero Section */}
-            <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
-                {/* Background Effects */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-7xl pointer-events-none">
-                    <div className="absolute top-20 left-20 w-72 h-72 bg-purple-500/20 rounded-full blur-[100px] animate-pulse"></div>
-                    <div className="absolute top-40 right-20 w-96 h-96 bg-cyan-500/20 rounded-full blur-[100px] animate-pulse delay-1000"></div>
-                </div>
-
-                <div className="max-w-7xl mx-auto px-6 relative z-10">
-                    <div className="text-center max-w-4xl mx-auto">
+                {/* Live Demo Section */}
+                <section className="py-20 px-4 sm:px-6 lg:px-8 bg-black/40 backdrop-blur-sm border-y border-purple-500/10">
+                    <div className="max-w-7xl mx-auto">
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.6 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            className="text-center mb-12"
                         >
-                            <span className="inline-block py-1 px-3 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-sm font-medium mb-6">
-                                ✨ The Future of Collaboration
-                            </span>
-                            <h1 className="text-5xl md:text-7xl font-bold mb-8 leading-tight">
-                                Where Ideas Meet <br />
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400">
-                                    Intelligence
-                                </span>
-                            </h1>
-                            <p className="text-xl text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
-                                Experience seamless project management powered by AI.
-                                Real-time chat, intelligent insights, and effortless collaboration in one unified workspace.
+                            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 glow-text">
+                                See NeuraChat in Action
+                            </h2>
+                            <p className="text-lg text-purple-200/80 max-w-2xl mx-auto">
+                                Experience intelligent code completion and real-time collaboration.
                             </p>
-                            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                                <Link to="/register">
-                                    <button className="px-8 py-4 rounded-xl bg-gradient-to-r from-purple-600 to-violet-600 text-white font-semibold hover:shadow-lg hover:shadow-purple-500/25 hover:-translate-y-1 transition-all duration-300 flex items-center gap-2">
-                                        Start Building Free
-                                        <i className="ri-arrow-right-line"></i>
-                                    </button>
-                                </Link>
-                                <Link to="/login">
-                                    <button className="px-8 py-4 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-700 hover:-translate-y-1 transition-all duration-300 border border-slate-700">
-                                        View Demo
-                                    </button>
-                                </Link>
-                            </div>
                         </motion.div>
 
-                        {/* Hero Image/Preview */}
+                        <div className="flex justify-center transform hover:scale-[1.02] transition-transform duration-500 shadow-[0_0_40px_rgba(139,92,246,0.3)] rounded-2xl">
+                            <LiveCodeDemo />
+                        </div>
+                    </div>
+                </section>
+
+                {/* Features Section */}
+                <section id="features" className="py-20 px-4 sm:px-6 lg:px-8">
+                    <div className="max-w-7xl mx-auto">
                         <motion.div
-                            initial={{ opacity: 0, y: 40 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8, delay: 0.2 }}
-                            className="mt-20 relative"
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            className="text-center mb-16"
                         >
-                            <div className="rounded-2xl border border-white/10 shadow-2xl overflow-hidden glass-strong p-2">
-                                <div className="rounded-xl bg-slate-950 aspect-video relative overflow-hidden group flex flex-col">
-                                    {/* Mock Editor Header */}
-                                    <div className="h-10 border-b border-white/10 flex items-center px-4 gap-2 bg-slate-900/50">
-                                        <div className="flex gap-1.5">
-                                            <div className="w-3 h-3 rounded-full bg-red-500/50"></div>
-                                            <div className="w-3 h-3 rounded-full bg-yellow-500/50"></div>
-                                            <div className="w-3 h-3 rounded-full bg-green-500/50"></div>
-                                        </div>
-                                        <div className="ml-4 px-3 py-1 rounded-t-lg bg-slate-800 text-xs text-slate-400 font-mono border-t border-x border-white/5 relative top-1.5">
-                                            App.jsx
-                                        </div>
-                                    </div>
-
-                                    {/* Mock Code Content */}
-                                    <div className="flex-1 p-4 font-mono text-sm overflow-hidden text-left relative">
-                                        <div className="absolute top-0 right-0 p-4">
-                                            <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></div>
-                                        </div>
-                                        <div className="flex gap-4">
-                                            <div className="text-slate-600 text-right select-none flex flex-col gap-1">
-                                                {Array.from({ length: 12 }).map((_, i) => (
-                                                    <span key={i}>{i + 1}</span>
-                                                ))}
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <div className="text-purple-400">import <span className="text-cyan-400">React</span> from <span className="text-green-400">'react'</span></div>
-                                                <div className="text-purple-400">import <span className="text-cyan-400">{`{ useState }`}</span> from <span className="text-green-400">'react'</span></div>
-                                                <br />
-                                                <div><span className="text-purple-400">const</span> <span className="text-yellow-400">App</span> = () <span className="text-purple-400">=&gt;</span> {'{'}</div>
-                                                <div className="pl-4"><span className="text-purple-400">const</span> [<span className="text-cyan-400">count</span>, <span className="text-cyan-400">setCount</span>] = <span className="text-blue-400">useState</span>(<span className="text-orange-400">0</span>)</div>
-                                                <br />
-                                                <div className="pl-4"><span className="text-purple-400">return</span> (</div>
-                                                <div className="pl-8">&lt;<span className="text-cyan-400">div</span> <span className="text-blue-400">className</span>=<span className="text-green-400">"app"</span>&gt;</div>
-                                                <div className="pl-12">&lt;<span className="text-cyan-400">h1</span>&gt;Hello NeuraChat! &lt;/<span className="text-cyan-400">h1</span>&gt;</div>
-                                                <div className="pl-12 text-slate-500">{'/* AI generated optimization */'}</div>
-                                                <div className="pl-8">&lt;/<span className="text-cyan-400">div</span>&gt;</div>
-                                                <div className="pl-4">)</div>
-                                                <div>{'}'}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+                                Powerful Features
+                            </h2>
+                            <p className="text-xl text-slate-400 max-w-2xl mx-auto">
+                                Everything you need to build, collaborate, and ship faster
+                            </p>
                         </motion.div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {features.map((feature, index) => (
+                                <FeatureCard
+                                    key={index}
+                                    icon={feature.icon}
+                                    title={feature.title}
+                                    description={feature.description}
+                                    delay={index * 0.1}
+                                />
+                            ))}
+                        </div>
                     </div>
-                </div>
-            </section>
+                </section>
 
-            {/* Features Section */}
-            <section className="py-24 bg-slate-900/50 relative">
-                <div className="max-w-7xl mx-auto px-6">
-                    <div className="text-center mb-16">
-                        <h2 className="text-3xl md:text-4xl font-bold mb-4">Everything you need to ship faster</h2>
-                        <p className="text-slate-400 max-w-2xl mx-auto">
-                            Powerful features designed for modern development teams.
-                        </p>
+                {/* How It Works Section */}
+                <section id="how-it-works" className="py-20 px-4 sm:px-6 lg:px-8">
+                    <div className="max-w-7xl mx-auto">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            className="text-center mb-16"
+                        >
+                            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+                                How It Works
+                            </h2>
+                            <p className="text-xl text-slate-400 max-w-2xl mx-auto">
+                                Get started in minutes with our simple 4-step process
+                            </p>
+                        </motion.div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                            {steps.map((step, index) => (
+                                <motion.div
+                                    key={index}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: index * 0.1 }}
+                                    className="text-center galaxy-glass p-8 rounded-2xl hover:border-purple-500/50 hover:shadow-[0_0_30px_rgba(139,92,246,0.3)] transition-all"
+                                >
+                                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-600 to-violet-600 shadow-[0_0_15px_rgba(139,92,246,0.8)] flex items-center justify-center text-2xl font-bold text-white mx-auto mb-6">
+                                        {step.number}
+                                    </div>
+                                    <h3 className="text-xl font-semibold text-white mb-2">
+                                        {step.title}
+                                    </h3>
+                                    <p className="text-slate-400">
+                                        {step.description}
+                                    </p>
+                                </motion.div>
+                            ))}
+                        </div>
                     </div>
+                </section>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {features.map((feature, index) => (
-                            <motion.div
-                                key={index}
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: index * 0.1 }}
-                                className="p-8 rounded-2xl bg-white/5 border border-white/5 hover:border-purple-500/30 hover:bg-white/10 transition-all duration-300 group"
-                            >
-                                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform`}>
-                                    <i className={`${feature.icon} text-2xl text-white`}></i>
-                                </div>
-                                <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
-                                <p className="text-slate-400 leading-relaxed">
-                                    {feature.description}
-                                </p>
-                            </motion.div>
-                        ))}
+                {/* Testimonials Section */}
+                <section id="testimonials" className="py-20 px-4 sm:px-6 lg:px-8">
+                    <div className="max-w-7xl mx-auto">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            className="text-center mb-16"
+                        >
+                            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+                                Loved by Developers
+                            </h2>
+                            <p className="text-xl text-slate-400 max-w-2xl mx-auto">
+                                See what our users have to say about NeuraChat
+                            </p>
+                        </motion.div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {testimonials.map((testimonial, index) => (
+                                <motion.div
+                                    key={index}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: index * 0.1 }}
+                                    className="glass p-6 rounded-xl"
+                                >
+                                    <div className="flex gap-1 mb-4">
+                                        {[...Array(testimonial.rating)].map((_, i) => (
+                                            <i key={i} className="ri-star-fill text-yellow-400"></i>
+                                        ))}
+                                    </div>
+                                    <p className="text-slate-300 mb-6">"{testimonial.content}"</p>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 flex items-center justify-center text-white font-semibold">
+                                            {testimonial.avatar}
+                                        </div>
+                                        <div>
+                                            <div className="text-white font-semibold">
+                                                {testimonial.name}
+                                            </div>
+                                            <div className="text-slate-400 text-sm">
+                                                {testimonial.role} at {testimonial.company}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </div>
                     </div>
-                </div>
-            </section>
+                </section>
 
-            {/* CTA Section */}
-            <section className="py-24 relative overflow-hidden">
-                <div className="max-w-5xl mx-auto px-6 relative z-10">
-                    <div className="rounded-3xl bg-gradient-to-br from-purple-900/50 to-slate-900 border border-purple-500/20 p-12 md:p-20 text-center relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-full h-full bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
-
-                        <div className="relative z-10">
-                            <h2 className="text-3xl md:text-5xl font-bold mb-6">Ready to transform your workflow?</h2>
-                            <p className="text-xl text-slate-300 mb-10 max-w-2xl mx-auto">
-                                Join thousands of developers using NeuraChat to build the future.
+                {/* CTA Section */}
+                <section className="py-20 px-4 sm:px-6 lg:px-8">
+                    <div className="max-w-4xl mx-auto">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            className="glass-strong p-12 rounded-2xl text-center"
+                        >
+                            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+                                Ready to Get Started?
+                            </h2>
+                            <p className="text-xl text-slate-300 mb-8">
+                                Join thousands of developers building better software together
                             </p>
                             <Link
                                 to="/register"
-                                className="inline-block px-10 py-4 rounded-xl bg-white text-purple-900 font-bold hover:bg-purple-50 transition-colors shadow-xl shadow-purple-900/20"
+                                className="inline-block px-8 py-4 bg-gradient-to-r from-purple-600 to-cyan-500 text-white rounded-lg font-semibold text-lg hover:shadow-xl hover:shadow-purple-500/50 transition-all hover:scale-105"
                             >
-                                Get Started For Free
+                                Start Free Trial
                             </Link>
-                        </div>
+                            <p className="text-slate-400 text-sm mt-4">
+                                No credit card required • Free forever plan available
+                            </p>
+                        </motion.div>
                     </div>
-                </div>
-            </section>
+                </section>
 
-            {/* Footer */}
-            <footer className="py-12 border-t border-white/10 text-slate-400 text-sm">
-                <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
-                    <div className="flex items-center gap-2">
-                        <i className="ri-code-s-slash-line text-purple-500 text-lg"></i>
-                        <span className="font-semibold text-slate-200">NeuraChat</span>
-                        <span>© 2024</span>
-                    </div>
-                    <div className="flex gap-8">
-                        <a href="#" className="hover:text-purple-400 transition-colors">Privacy</a>
-                        <a href="#" className="hover:text-purple-400 transition-colors">Terms</a>
-                        <a href="#" className="hover:text-purple-400 transition-colors">Contact</a>
-                    </div>
-                    <div className="flex gap-4">
-                        <a href="#" className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-purple-500 hover:text-white transition-all">
-                            <i className="ri-twitter-x-line"></i>
-                        </a>
-                        <a href="#" className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-purple-500 hover:text-white transition-all">
-                            <i className="ri-github-line"></i>
-                        </a>
-                    </div>
-                </div>
-            </footer>
-        </div>
+                <Footer />
+            </div>
+        </div >
     )
 }
-
-const features = [
-    {
-        title: "Real-time Collaboration",
-        description: "Chat, share files, and manage tasks with your team in real-time. No delays, just seamless syncing.",
-        icon: "ri-chat-smile-3-line",
-        gradient: "from-purple-500 to-indigo-500"
-    },
-    {
-        title: "AI-Powered Assistant",
-        description: "Get smart suggestions, automate repetitive tasks, and code smarter with our built-in AI companion.",
-        icon: "ri-brain-line",
-        gradient: "from-cyan-500 to-blue-500"
-    },
-    {
-        title: "Project Management",
-        description: "Organize tasks, track progress, and manage resources with our intuitive kanban and list views.",
-        icon: "ri-kanban-view",
-        gradient: "from-pink-500 to-rose-500"
-    }
-]
 
 export default Landing

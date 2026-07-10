@@ -61,29 +61,6 @@ const projectSchema = new mongoose.Schema({
         }
     ],
     tasks: [taskSchema],
-    messages: [
-        {
-            sender: {
-                type: mongoose.Schema.Types.Mixed, // ObjectId reference to user or "ai" string
-                required: true
-            },
-            message: {
-                type: String,
-            },
-            files: [
-                {
-                    type: Object
-                }
-            ],
-            fileTree: {
-                type: Object
-            },
-            timestamp: {
-                type: Date,
-                default: Date.now
-            }
-        }
-    ],
     fileTree: {
         type: Object,
         default: {}

@@ -8,12 +8,13 @@ import { initializeSocket, receiveMessage, sendMessage } from '../config/socket'
 import Markdown from 'markdown-to-jsx'
 import hljs from 'highlight.js'
 import { getWebContainer } from '../config/webcontainer'
-import { transformFileTree } from '../utils/fileUtils'
-import Modal from '../components/Modal'
-import Button from '../components/Button'
+import Modal from '../components/ui/Modal'
+import Button from '../components/ui/Button'
+import Avatar from '../components/ui/Avatar'
 import FilePreview from '../components/FilePreview'
 import FileUpload from '../components/FileUpload'
 import TaskList from '../components/TaskList'
+import RobotSkeleton from '../components/RobotSkeleton'
 
 function SyntaxHighlightedCode(props) {
     const ref = useRef(null)
@@ -48,7 +49,7 @@ function SyntaxHighlightedCode(props) {
             {showCopy && (
                 <button
                     onClick={handleCopy}
-                    className="absolute top-1 right-1 px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded flex items-center gap-1 transition-all z-50 shadow-lg"
+                    className="absolute top-1 right-1 px-2 py-1 bg-purple-600 hover:bg-purple-700 text-[var(--nc-text-primary)] text-xs rounded flex items-center gap-1 transition-all z-50 shadow-lg"
                     title="Copy code"
                 >
                     <i className={copied ? "ri-check-line" : "ri-file-copy-line"}></i>
@@ -83,9 +84,11 @@ const Project = () => {
     const [showReactionPicker, setShowReactionPicker] = useState(null) // Track which message shows reaction picker
     const [typingUsers, setTypingUsers] = useState([]) // Track who is typing
     const typingTimeoutRef = useRef(null) // For debouncing typing indicator
+    const lastNotifiedUrlRef = useRef(null)
     const [isFileUploadModalOpen, setIsFileUploadModalOpen] = useState(false)
     const [uploadingFiles, setUploadingFiles] = useState(false)
     const [activeTab, setActiveTab] = useState('chat') // 'chat', 'tasks', 'files'
+    const [terminalOutput, setTerminalOutput] = useState('')
 
     const handleUserClick = (id) => {
         setSelectedUserId(prevSelectedUserId => {
@@ -121,6 +124,7 @@ const Project = () => {
         if (!message.trim()) return
 
         const messageData = {
+            _id: crypto.randomUUID(), // add unique ID
             message,
             sender: user,
             timestamp: new Date().toISOString(),
@@ -147,9 +151,12 @@ const Project = () => {
         }
     }
 
-    const handleReaction = (messageIndex, emoji) => {
+    const handleReaction = (messageId, emoji) => {
         setMessages(prevMessages => {
             const newMessages = [...prevMessages]
+            const messageIndex = newMessages.findIndex(m => m._id === messageId);
+            if (messageIndex === -1) return newMessages;
+
             const message = newMessages[messageIndex]
 
             // Initialize reactions array if it doesn't exist
@@ -162,7 +169,7 @@ const Project = () => {
 
             if (existingReaction) {
                 // Check if user already reacted with this emoji
-                const userIndex = existingReaction.users.findIndex(u => u._id === user._id)
+                const userIndex = existingReaction.users.findIndex(u => (u._id || u) === user._id)
                 if (userIndex > -1) {
                     // Remove user's reaction
                     existingReaction.users.splice(userIndex, 1)
@@ -184,7 +191,7 @@ const Project = () => {
 
             // Emit reaction update via socket
             sendMessage('message-reaction', {
-                messageIndex,
+                messageId,
                 emoji,
                 user,
                 reactions: message.reactions
@@ -216,6 +223,7 @@ const Project = () => {
 
             // Send file message via socket
             const fileMessage = {
+                _id: crypto.randomUUID(), // add unique ID
                 message: message.trim() || `Shared ${uploadedFiles.length} file${uploadedFiles.length > 1 ? 's' : ''}`,
                 sender: user,
                 timestamp: new Date().toISOString(),
@@ -335,11 +343,35 @@ const Project = () => {
         }
     }
 
+    const handleCreateFile = () => {
+        const fileName = prompt('Enter file name (e.g. index.js):')
+        if (!fileName) return
+        const trimmed = fileName.trim()
+        if (!trimmed) return
+        if (fileTree[trimmed]) {
+            toast.error('File already exists!')
+            return
+        }
+        const updatedFileTree = {
+            ...fileTree,
+            [trimmed]: {
+                file: {
+                    contents: ''
+                }
+            }
+        }
+        setFileTree(updatedFileTree)
+        saveFileTree(updatedFileTree)
+        setCurrentFile(trimmed)
+        setOpenFiles([...new Set([...openFiles, trimmed])])
+        toast.success(`Created file ${trimmed}`)
+    }
+
     function WriteAiMessage(message) {
         try {
             const messageObject = JSON.parse(message)
             return (
-                <div className='overflow-auto bg-slate-900 text-white rounded-lg p-3 border border-slate-700'>
+                <div className='overflow-auto rounded-lg p-3 border' style={{ background: 'var(--nc-bg)', borderColor: 'var(--nc-border)' }}>
                     <Markdown
                         children={messageObject.text}
                         options={{
@@ -352,7 +384,7 @@ const Project = () => {
             )
         } catch (e) {
             return (
-                <div className='overflow-auto bg-slate-900 text-white rounded-lg p-3 border border-slate-700'>
+                <div className='overflow-auto rounded-lg p-3 border' style={{ background: 'var(--nc-bg)', borderColor: 'var(--nc-border)' }}>
                     <p>{message}</p>
                 </div>
             )
@@ -360,17 +392,24 @@ const Project = () => {
     }
 
     useEffect(() => {
-        let isMounted = true
-        let unsubscribeServerReady = null
         const socket = initializeSocket(project._id)
 
         if (!webContainer) {
             getWebContainer().then(container => {
-                if (!isMounted) return
                 setWebContainer(container)
                 console.log("container started")
 
-                console.log("container started")
+                container.on('server-ready', (port, url) => {
+                    console.log('Server ready - Port:', port, 'URL:', url)
+                    // Ensure we have the full URL, not just a path
+                    const fullUrl = url.startsWith('http') ? url : `http://localhost:${port}`
+                    console.log('Setting iframe URL to:', fullUrl)
+                    setIframeUrl(fullUrl)
+                    if (lastNotifiedUrlRef.current !== fullUrl) {
+                        lastNotifiedUrlRef.current = fullUrl
+                        toast.success('Server started successfully!')
+                    }
+                })
             })
         }
 
@@ -396,12 +435,14 @@ const Project = () => {
                 }
 
                 if (message.fileTree) {
-                    webContainer?.mount(transformFileTree(message.fileTree))
+                    webContainer?.mount(message.fileTree)
                     setFileTree(message.fileTree || {})
-                    saveFileTree(message.fileTree || {}) // Persist to backend
+                    saveFileTree(message.fileTree)
                 }
+                setMessages(prevMessages => [...prevMessages, data])
+            } else {
+                setMessages(prevMessages => [...prevMessages, data])
             }
-            setMessages(prevMessages => [...prevMessages, data])
         }
 
         receiveMessage('project-message', messageHandler)
@@ -428,8 +469,9 @@ const Project = () => {
             console.log('Received reaction:', data)
             setMessages(prevMessages => {
                 const newMessages = [...prevMessages]
-                if (newMessages[data.messageIndex]) {
-                    newMessages[data.messageIndex].reactions = data.reactions
+                const index = newMessages.findIndex(m => m._id === data.messageId)
+                if (index !== -1) {
+                    newMessages[index].reactions = data.reactions
                 }
                 return newMessages
             })
@@ -459,14 +501,19 @@ const Project = () => {
         axios.get(`/projects/get-project/${location.state.project._id}`).then(res => {
             setProject(res.data.project)
             setFileTree(res.data.project.fileTree || {})
-            if (res.data.project.messages) {
-                setMessages(res.data.project.messages)
-                setTimeout(() => {
-                    if (messageBox.current) {
-                        messageBox.current.scrollTop = messageBox.current.scrollHeight
-                    }
-                }, 100)
-            }
+        })
+
+        // Fetch historical messages
+        axios.get(`/projects/get-messages/${location.state.project._id}`).then(res => {
+            setMessages(res.data.messages || [])
+            // Scroll to bottom initially
+            setTimeout(() => {
+                if (messageBox.current) {
+                    messageBox.current.scrollTop = messageBox.current.scrollHeight
+                }
+            }, 500)
+        }).catch(err => {
+            console.error('Failed to load messages', err)
         })
 
         axios.get('/users/all').then(res => {
@@ -477,12 +524,6 @@ const Project = () => {
 
         // Cleanup function to remove event listener
         return () => {
-            isMounted = false
-            toast.dismiss('server-ready')
-
-            if (unsubscribeServerReady) {
-                unsubscribeServerReady()
-            }
             if (socket) {
                 socket.off('project-message', messageHandler)
                 socket.off('user-typing-start', typingStartHandler)
@@ -492,36 +533,6 @@ const Project = () => {
             }
         }
     }, [])
-
-    useEffect(() => {
-        if (!webContainer) return;
-
-        console.log("Setting up server-ready listener");
-        const unsubscribe = webContainer.on('server-ready', (port, url) => {
-            console.log('Server ready - Port:', port, 'URL:', url);
-            const fullUrl = url.startsWith('http') ? url : `http://localhost:${port}`;
-            setIframeUrl(fullUrl);
-            setRunProcess(true) // Ensure runProcess state matches
-            toast.success('Previews Enabled', { id: 'server-preview' });
-        });
-
-        return () => {
-            console.log("Cleaning up server-ready listener");
-            unsubscribe();
-        };
-    }, [webContainer]);
-
-    // Cleanup running process on unmount
-    // Cleanup running process on unmount
-    useEffect(() => {
-        return () => {
-            // Do not kill process on unmount, allow it to run in background
-            // if (runProcess) {
-            //     console.log("Cleaning up running process");
-            //     runProcess.kill();
-            // }
-        };
-    }, [runProcess]);
 
     function saveFileTree(ft) {
         axios.put('/projects/update-file-tree', {
@@ -592,276 +603,305 @@ const Project = () => {
         })
     }
 
-
-
-    // Clear chat handler
-    const handleClearChat = async () => {
-        if (!confirm('Are you sure you want to clear the chat? This action cannot be undone.')) {
-            return
-        }
-
-        try {
-            await axios.put(`/projects/${project._id}/clear-chat`)
-            setMessages([])
-            sendMessage('project-chat-cleared', { user })
-            toast.success('Chat cleared successfully')
-        } catch (error) {
-            console.error('Clear chat error:', error)
-            toast.error('Failed to clear chat')
-        }
-    }
-
-    // Effect to listen for remote clears
-    useEffect(() => {
-        const handleChatCleared = (data) => {
-            setMessages([])
-            toast.success(`Chat cleared by ${data.user.email}`)
-        }
-        receiveMessage('project-chat-cleared', handleChatCleared)
-    }, [])
-
     return (
-        <main className='h-screen w-screen flex flex-col bg-slate-950'>
-            {/* Header */}
-            <header className='flex justify-between items-center px-6 py-4 bg-slate-900 border-b border-slate-800'>
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={() => navigate('/dashboard')}
-                        className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
-                    >
-                        <i className="ri-arrow-left-line text-slate-400 text-xl"></i>
-                    </button>
-                    <div>
-                        <h1 className='text-xl font-bold text-white'>{project.name}</h1>
-                        <p className="text-sm text-slate-400">{project.users.length} collaborators</p>
-                    </div>
-                </div>
+        <div className="h-screen w-screen flex flex-col" style={{ background: 'var(--nc-bg)' }}>
+
+            {/* ── Top Header ── */}
+            <header
+                className="flex items-center justify-between px-5 shrink-0 z-20"
+                style={{
+                    height: 56,
+                    background: 'var(--nc-surface)',
+                    borderBottom: '1px solid var(--nc-border)',
+                }}
+            >
+                {/* Back + project name */}
                 <div className="flex items-center gap-3">
                     <button
-                        onClick={handleClearChat}
-                        className="p-2 hover:bg-red-900/50 text-red-500 rounded-lg transition-colors"
-                        title="Clear Chat"
+                        onClick={() => navigate('/home')}
+                        className="nc-btn-icon"
+                        style={{ width: 34, height: 34 }}
+                        aria-label="Back to Dashboard"
                     >
-                        <i className="ri-delete-bin-line text-xl"></i>
+                        <i className="ri-arrow-left-line text-[16px]" />
                     </button>
+
+                    <div className="w-px h-5 flex-shrink-0" style={{ background: 'var(--nc-border)' }} />
+
+                    <div
+                        className="w-7 h-7 rounded-[8px] flex items-center justify-center flex-shrink-0"
+                        style={{ background: 'rgba(124,92,255,0.15)', border: '1px solid rgba(124,92,255,0.25)' }}
+                    >
+                        <i className="ri-folder-3-fill text-[14px]" style={{ color: 'var(--nc-primary)' }} />
+                    </div>
+
+                    <div>
+                        <h1 className="text-[15px] font-[700] text-[var(--nc-text-primary)] leading-none tracking-tight">{project.name}</h1>
+                        <p className="text-[11px] mt-0.5" style={{ color: 'var(--nc-text-muted)' }}>
+                            {project.users?.length || 0} {project.users?.length === 1 ? 'member' : 'members'}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Right controls */}
+                <div className="flex items-center gap-2">
                     <Button
                         onClick={() => setIsModalOpen(true)}
                         variant="secondary"
-                        size="small"
-                        icon={<i className="ri-user-add-line"></i>}
+                        size="sm"
+                        icon={<i className="ri-user-add-line" />}
                     >
-                        Add Collaborator
+                        Add member
                     </Button>
+
                     <button
                         onClick={() => setIsSidePanelOpen(!isSidePanelOpen)}
-                        className='p-2 hover:bg-slate-800 rounded-lg transition-colors'
+                        className="nc-btn-icon"
+                        style={isSidePanelOpen ? {
+                            background: 'rgba(124,92,255,0.12)',
+                            borderColor: 'rgba(124,92,255,0.25)',
+                            color: 'var(--nc-primary)',
+                        } : {}}
+                        aria-label="Toggle collaborators panel"
                     >
-                        <i className="ri-group-fill text-slate-400 text-xl"></i>
+                        <i className="ri-group-2-line text-[17px]" />
                     </button>
                 </div>
             </header>
 
-            <div className="flex flex-1 overflow-hidden">
-                {/* Left Panel - Chat & Tasks */}
-                <section className="relative flex flex-col h-full w-96 bg-slate-900 border-r border-slate-800">
-                    {/* Tab Header */}
-                    <div className="p-4 border-b border-slate-800">
-                        <div className="flex gap-2">
+            {/* ── Main layout ── */}
+            <div className="flex flex-1 overflow-hidden min-h-0">
+
+                {/* ── Left Panel: Chat + Tasks ── */}
+                <section
+                    className="relative flex flex-col h-full shrink-0"
+                    style={{ width: 360, background: 'var(--nc-surface)', borderRight: '1px solid var(--nc-border)' }}
+                >
+                    {/* Tab bar */}
+                    <div
+                        className="flex items-center gap-1 px-3 py-3 shrink-0"
+                        style={{ borderBottom: '1px solid var(--nc-border)' }}
+                    >
+                        {[
+                            { id: 'chat',  icon: 'ri-chat-3-line',  label: 'Chat' },
+                            { id: 'tasks', icon: 'ri-task-line',     label: 'Tasks', badge: project.tasks?.length || 0 },
+                        ].map((tab) => (
                             <button
-                                onClick={() => setActiveTab('chat')}
-                                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'chat'
-                                    ? 'bg-purple-600 text-white'
-                                    : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-                                    }`}
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className="flex items-center gap-2 px-3 h-8 rounded-[8px] text-[13px] font-[500] transition-all"
+                                style={{
+                                    background: activeTab === tab.id ? 'var(--nc-elevated)' : 'transparent',
+                                    color: activeTab === tab.id ? 'var(--nc-text-primary)' : 'var(--nc-text-secondary)',
+                                    fontWeight: activeTab === tab.id ? 600 : 500,
+                                    boxShadow: activeTab === tab.id ? '0 1px 4px rgba(0,0,0,0.3)' : 'none',
+                                }}
+                                aria-selected={activeTab === tab.id}
                             >
-                                <i className="ri-chat-3-line mr-2"></i>
-                                Chat
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('tasks')}
-                                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'tasks'
-                                    ? 'bg-purple-600 text-white'
-                                    : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-                                    }`}
-                            >
-                                <i className="ri-task-line mr-2"></i>
-                                Tasks
-                                {project.tasks && project.tasks.length > 0 && (
-                                    <span className="ml-2 px-2 py-0.5 bg-purple-500 text-white text-xs rounded-full">
-                                        {project.tasks.length}
+                                <i className={`${tab.icon} text-[14px]`} />
+                                {tab.label}
+                                {tab.badge > 0 && (
+                                    <span
+                                        className="px-1.5 py-0.5 rounded-full text-[10px] font-[700]"
+                                        style={{
+                                            background: activeTab === tab.id ? 'rgba(124,92,255,0.2)' : 'rgba(255,255,255,0.08)',
+                                            color: activeTab === tab.id ? 'var(--nc-primary)' : 'var(--nc-text-muted)',
+                                        }}
+                                    >
+                                        {tab.badge}
                                     </span>
                                 )}
                             </button>
-                        </div>
+                        ))}
                     </div>
 
                     {/* Tab Content */}
                     {activeTab === 'chat' ? (
-                        <div className="conversation-area flex-grow flex flex-col h-full relative overflow-hidden">
-                            <div
-                                ref={messageBox}
-                                className="message-box p-4 flex-grow flex flex-col gap-3 overflow-auto"
-                            >
+                        <div className="flex flex-col flex-1 overflow-hidden min-h-0">
+                            {/* Messages */}
+                            <div ref={messageBox} className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
                                 <AnimatePresence>
-                                    {messages.map((msg, index) => (
-                                        <motion.div
-                                            key={index}
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            className={`flex ${msg.sender._id == user._id ? 'justify-end' : 'justify-start'}`}
-                                        >
-                                            <div className={`max-w-[85%] ${msg.sender._id === 'ai' ? 'max-w-full' : ''}`}>
-                                                {msg.sender._id !== user._id && (
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-violet-500 flex items-center justify-center text-white text-xs font-semibold">
-                                                            {msg.sender.email?.charAt(0).toUpperCase() || 'A'}
-                                                        </div>
-                                                        <span className="text-xs text-slate-400">{msg.sender.email || 'AI Assistant'}</span>
-                                                    </div>
-                                                )}
-                                                <div className="relative">
-                                                    <div className={`rounded-2xl p-3 ${msg.sender._id === 'ai'
-                                                        ? 'bg-slate-800 border border-slate-700'
-                                                        : msg.sender._id == user._id
-                                                            ? 'bg-gradient-to-r from-purple-600 to-violet-600 text-white'
-                                                            : 'bg-slate-800 text-white'
-                                                        } group relative`}>
-                                                        {msg.sender._id === 'ai' ?
-                                                            WriteAiMessage(msg.message) :
-                                                            <p className="text-sm break-words">{msg.message}</p>
-                                                        }
+                                    {messages.map((msg, index) => {
+                                        const isCurrentUser = msg.sender && user && (
+                                            msg.sender.email === user.email ||
+                                            (msg.sender._id && msg.sender._id === user._id) ||
+                                            msg.sender === user._id
+                                        );
 
-                                                        {/* File Attachments */}
+                                        return (
+                                            <motion.div
+                                                key={index}
+                                                initial={{ opacity: 0, y: 8 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ duration: 0.15 }}
+                                                className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
+                                            >
+                                                <div className={`max-w-[85%] ${msg.sender._id === 'ai' ? 'max-w-full' : ''}`}>
+                                                    {!isCurrentUser && (
+                                                        <div className="flex items-center gap-1.5 mb-1.5 pl-1">
+                                                            <Avatar email={msg.sender.email} size="xs" />
+                                                            <span className="text-[11px] font-[600]" style={{ color: 'var(--nc-text-secondary)' }}>
+                                                                {msg.sender._id === 'ai' ? 'NeuraChat AI' : msg.sender.email}
+                                                            </span>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="relative">
+                                                        <div
+                                                            className={`px-4 py-2.5 group relative ${
+                                                                msg.sender._id === 'ai'
+                                                                    ? 'rounded-[14px] rounded-bl-[4px]'
+                                                                    : isCurrentUser
+                                                                        ? 'rounded-[14px] rounded-br-[4px]'
+                                                                        : 'rounded-[14px] rounded-bl-[4px]'
+                                                            }`}
+                                                            style={{
+                                                                background: msg.sender._id === 'ai'
+                                                                    ? 'var(--nc-elevated)'
+                                                                    : isCurrentUser
+                                                                        ? 'rgba(124,92,255,0.18)'
+                                                                        : 'var(--nc-elevated)',
+                                                                border: msg.sender._id === 'ai'
+                                                                    ? '1px solid rgba(124,92,255,0.2)'
+                                                                    : isCurrentUser
+                                                                        ? '1px solid rgba(124,92,255,0.35)'
+                                                                        : '1px solid var(--nc-border)',
+                                                            }}
+                                                        >
+                                                            {msg.sender._id === 'ai'
+                                                                ? WriteAiMessage(msg.message)
+                                                                : <p className="text-[14px] leading-relaxed break-words" style={{ color: 'var(--nc-text-primary)' }}>{msg.message}</p>
+                                                            }
+
                                                         {msg.files && msg.files.length > 0 && (
-                                                            <div className="file-attachments-container mt-2">
-                                                                {msg.files.map((file, fileIndex) => (
-                                                                    <FilePreview
-                                                                        key={fileIndex}
-                                                                        file={file}
-                                                                        onDownload={handleFileDownload}
-                                                                    />
+                                                            <div className="mt-2">
+                                                                {msg.files.map((file, fi) => (
+                                                                    <FilePreview key={fi} file={file} onDownload={handleFileDownload} />
                                                                 ))}
                                                             </div>
                                                         )}
 
-                                                        {/* Reaction Button - Shows on hover */}
                                                         {msg.sender._id !== 'ai' && (
                                                             <button
                                                                 onClick={() => setShowReactionPicker(showReactionPicker === index ? null : index)}
-                                                                className="absolute -bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-700 hover:bg-slate-600 rounded-full p-1 text-xs"
-                                                                title="Add reaction"
+                                                                className="absolute -bottom-3 right-2 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded-full flex items-center justify-center text-[12px]"
+                                                                style={{ background: 'var(--nc-surface)', border: '1px solid var(--nc-border)', color: 'var(--nc-text-muted)' }}
+                                                                title="React"
                                                             >
-                                                                <i className="ri-emotion-line"></i>
+                                                                <i className="ri-emotion-line" />
                                                             </button>
                                                         )}
                                                     </div>
 
-                                                    {/* Reaction Picker */}
                                                     {showReactionPicker === index && (
                                                         <motion.div
-                                                            initial={{ opacity: 0, scale: 0.8 }}
+                                                            initial={{ opacity: 0, scale: 0.85 }}
                                                             animate={{ opacity: 1, scale: 1 }}
-                                                            className={`absolute ${msg.sender._id == user._id ? 'right-0' : 'left-0'} top-full mt-1 bg-slate-800 border border-slate-700 rounded-lg p-2 flex gap-1 shadow-xl z-10`}
+                                                            className={`absolute ${isCurrentUser ? 'right-0' : 'left-0'} top-full mt-2 flex gap-1 p-2 rounded-[12px] z-10`}
+                                                            style={{ background: 'var(--nc-elevated)', border: '1px solid var(--nc-border)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}
                                                         >
-                                                            {availableReactions.map((emoji, emojiIndex) => (
-                                                                <button
-                                                                    key={emojiIndex}
-                                                                    onClick={() => handleReaction(index, emoji)}
-                                                                    className="text-xl hover:scale-125 transition-transform p-1"
-                                                                >
+                                                            {availableReactions.map((emoji, ei) => (
+                                                                <button key={ei} onClick={() => handleReaction(msg._id, emoji)} className="text-[18px] p-1 rounded-[8px] hover:bg-white/10 transition-all hover:scale-125">
                                                                     {emoji}
                                                                 </button>
                                                             ))}
                                                         </motion.div>
                                                     )}
 
-                                                    {/* Display Reactions */}
                                                     {msg.reactions && msg.reactions.length > 0 && (
-                                                        <div className={`flex flex-wrap gap-1 mt-2 ${msg.sender._id == user._id ? 'justify-end' : 'justify-start'}`}>
-                                                            {msg.reactions.map((reaction, reactionIndex) => (
+                                                        <div className={`flex flex-wrap gap-1 mt-1.5 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
+                                                            {msg.reactions.map((reaction, ri) => (
                                                                 <button
-                                                                    key={reactionIndex}
-                                                                    onClick={() => handleReaction(index, reaction.emoji)}
-                                                                    className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-all ${reaction.users.some(u => u._id === user._id)
-                                                                        ? 'bg-purple-600/30 border border-purple-500'
-                                                                        : 'bg-slate-700/50 border border-slate-600 hover:bg-slate-700'
-                                                                        }`}
+                                                                    key={ri}
+                                                                    onClick={() => handleReaction(msg._id, reaction.emoji)}
+                                                                    className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] transition-all"
+                                                                    style={{
+                                                                        background: reaction.users.some(u => (u._id || u) === user._id) ? 'rgba(124,92,255,0.2)' : 'rgba(255,255,255,0.06)',
+                                                                        border: reaction.users.some(u => (u._id || u) === user._id) ? '1px solid rgba(124,92,255,0.35)' : '1px solid var(--nc-border)',
+                                                                        color: 'var(--nc-text-secondary)',
+                                                                    }}
                                                                     title={reaction.users.map(u => u.email).join(', ')}
                                                                 >
                                                                     <span>{reaction.emoji}</span>
-                                                                    <span className="text-slate-300">{reaction.users.length}</span>
+                                                                    <span className="font-[600]">{reaction.users.length}</span>
                                                                 </button>
                                                             ))}
                                                         </div>
                                                     )}
 
                                                     {msg.timestamp && (
-                                                        <p className={`text-xs text-slate-500 mt-1 ${msg.sender._id == user._id ? 'text-right' : 'text-left'}`}>
+                                                        <p className={`text-[10px] mt-1 font-[500] ${isCurrentUser ? 'text-right' : 'text-left pl-1'}`}
+                                                            style={{ color: 'var(--nc-text-muted)' }}>
                                                             {formatTime(msg.timestamp)}
                                                         </p>
                                                     )}
                                                 </div>
                                             </div>
                                         </motion.div>
-                                    ))}
+                                    )})}
                                 </AnimatePresence>
 
-                                {/* Typing Indicator */}
                                 {typingUsers.length > 0 && (
                                     <motion.div
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: 10 }}
-                                        className="px-4 py-2 text-xs text-slate-400 italic flex items-center gap-2"
+                                        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                                        className="flex items-center gap-2 text-[12px] pl-1"
+                                        style={{ color: 'var(--nc-text-muted)' }}
                                     >
                                         <div className="flex gap-1">
-                                            <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                                            <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                                            <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                                            {[0, 150, 300].map((delay) => (
+                                                <span key={delay} className="w-1.5 h-1.5 rounded-full animate-bounce"
+                                                    style={{ background: 'var(--nc-primary)', animationDelay: `${delay}ms` }} />
+                                            ))}
                                         </div>
                                         <span>
                                             {typingUsers.length === 1
-                                                ? `${typingUsers[0].email} is typing...`
+                                                ? `${typingUsers[0].email} is typing…`
                                                 : typingUsers.length === 2
-                                                    ? `${typingUsers[0].email} and ${typingUsers[1].email} are typing...`
-                                                    : `${typingUsers.length} people are typing...`
+                                                    ? `${typingUsers[0].email} and ${typingUsers[1].email} are typing…`
+                                                    : `${typingUsers.length} people are typing…`
                                             }
                                         </span>
                                     </motion.div>
                                 )}
                             </div>
 
-                            <div className="p-4 border-t border-slate-800 bg-slate-900">
-                                <div className="flex gap-2">
+                            {/* Input */}
+                            <div className="p-3 shrink-0" style={{ borderTop: '1px solid var(--nc-border)' }}>
+                                <div className="flex items-center gap-2">
                                     <button
                                         onClick={() => setIsFileUploadModalOpen(true)}
-                                        className='px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-all'
+                                        className="nc-btn-icon flex-shrink-0"
+                                        style={{ width: 38, height: 38 }}
                                         title="Attach files"
+                                        aria-label="Attach files"
                                     >
-                                        <i className="ri-attachment-2"></i>
+                                        <i className="ri-attachment-2 text-[16px]" />
                                     </button>
+
                                     <input
                                         value={message}
-                                        onChange={(e) => {
-                                            setMessage(e.target.value)
-                                            handleTyping()
-                                        }}
+                                        onChange={(e) => { setMessage(e.target.value); handleTyping() }}
                                         onKeyPress={handleKeyPress}
-                                        className='input flex-grow'
+                                        placeholder="Type a message…"
+                                        className="nc-input"
+                                        style={{ height: 38, fontSize: 14, flex: 1 }}
                                         type="text"
-                                        placeholder='Type a message...'
+                                        aria-label="Message input"
                                     />
+
                                     <button
                                         onClick={send}
-                                        className='px-4 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-lg hover:from-purple-700 hover:to-violet-700 transition-all'
+                                        disabled={!message.trim()}
+                                        className="nc-btn nc-btn-primary flex-shrink-0"
+                                        style={{ height: 38, width: 38, padding: 0, borderRadius: 10 }}
+                                        aria-label="Send"
                                     >
-                                        <i className="ri-send-plane-fill"></i>
+                                        <i className="ri-send-plane-fill text-[16px]" />
                                     </button>
                                 </div>
                             </div>
                         </div>
                     ) : (
-                        /* Tasks Tab */
                         <TaskList
                             tasks={project.tasks || []}
                             projectUsers={project.users || []}
@@ -872,35 +912,35 @@ const Project = () => {
                         />
                     )}
 
-                    {/* Collaborators Side Panel */}
+                    {/* Collaborators slide panel */}
                     <AnimatePresence>
                         {isSidePanelOpen && (
                             <motion.div
                                 initial={{ x: '-100%' }}
                                 animate={{ x: 0 }}
                                 exit={{ x: '-100%' }}
-                                transition={{ type: 'spring', damping: 25 }}
-                                className='absolute inset-0 flex flex-col gap-2 glass-strong z-10'
+                                transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+                                className="absolute inset-0 flex flex-col z-20"
+                                style={{ background: 'var(--nc-surface)' }}
                             >
-                                <header className='flex justify-between items-center px-4 py-3 border-b border-white/10'>
-                                    <h2 className='font-semibold text-lg text-white'>Collaborators</h2>
-                                    <button
-                                        onClick={() => setIsSidePanelOpen(false)}
-                                        className='p-2 hover:bg-white/10 rounded-lg transition-colors'
-                                    >
-                                        <i className="ri-close-fill text-xl text-slate-300"></i>
+                                <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: '1px solid var(--nc-border)' }}>
+                                    <h2 className="text-[14px] font-[700] text-[var(--nc-text-primary)]">Collaborators</h2>
+                                    <button onClick={() => setIsSidePanelOpen(false)} className="nc-btn-icon" style={{ width: 32, height: 32 }} aria-label="Close">
+                                        <i className="ri-close-line text-[16px]" />
                                     </button>
-                                </header>
-                                <div className="users flex flex-col gap-2 p-4 overflow-auto">
-                                    {project.users && project.users.map((projectUser, idx) => (
-                                        <div key={idx} className="user cursor-pointer hover:bg-white/5 p-3 rounded-lg flex gap-3 items-center transition-colors">
-                                            <div className='w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-violet-500 flex items-center justify-center text-white font-semibold'>
-                                                {projectUser.email.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex-1 overflow-y-auto p-3 space-y-1">
+                                    {project.users?.map((pu, idx) => (
+                                        <div key={idx} className="flex items-center gap-3 p-3 rounded-[12px] transition-colors"
+                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                        >
+                                            <Avatar email={pu.email} size="md" />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[13px] font-[600] text-[var(--nc-text-primary)] truncate">{pu.email}</p>
+                                                <p className="text-[11px]" style={{ color: 'var(--nc-text-muted)' }}>Member</p>
                                             </div>
-                                            <div className="flex-1">
-                                                <h3 className='font-semibold text-white'>{projectUser.email}</h3>
-                                                <p className="text-xs text-slate-400">Active now</p>
-                                            </div>
+                                            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: 'var(--nc-success)' }} />
                                         </div>
                                     ))}
                                 </div>
@@ -909,84 +949,95 @@ const Project = () => {
                     </AnimatePresence>
                 </section>
 
-                {/* Middle Section - Code Editor */}
-                <section className="flex-grow flex h-full">
+                {/* ── Middle: File Explorer + Editor ── */}
+                <section className="flex-grow flex h-full relative z-0 overflow-hidden">
+
                     {/* File Explorer */}
-                    <div className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col">
-                        <div className="p-4 border-b border-slate-800">
-                            <h2 className="text-sm font-semibold text-white mb-3">FILES</h2>
-                            <input
-                                type="text"
-                                placeholder="Search files..."
-                                value={fileSearchQuery}
-                                onChange={(e) => setFileSearchQuery(e.target.value)}
-                                className="input text-sm py-2"
-                            />
+                    <div className="flex flex-col shrink-0" style={{ width: 220, background: 'var(--nc-surface)', borderRight: '1px solid var(--nc-border)' }}>
+                        <div className="px-4 py-3 shrink-0" style={{ borderBottom: '1px solid var(--nc-border)' }}>
+                            <div className="flex items-center justify-between mb-2.5">
+                                <p className="text-[11px] font-[700] tracking-[0.08em] uppercase" style={{ color: 'var(--nc-text-muted)', margin: 0 }}>Files</p>
+                                <button
+                                    onClick={handleCreateFile}
+                                    className="w-5 h-5 rounded hover:bg-white/10 flex items-center justify-center transition-colors text-[13px]"
+                                    style={{ color: 'var(--nc-text-secondary)' }}
+                                    title="New file"
+                                    aria-label="New file"
+                                >
+                                    <i className="ri-add-line" />
+                                </button>
+                            </div>
+                            <div className="relative">
+                                <i className="ri-search-line absolute left-2.5 top-1/2 -translate-y-1/2 text-[13px] pointer-events-none" style={{ color: 'var(--nc-text-muted)' }} />
+                                <input
+                                    type="text"
+                                    placeholder="Search files…"
+                                    value={fileSearchQuery}
+                                    onChange={(e) => setFileSearchQuery(e.target.value)}
+                                    className="nc-input"
+                                    style={{ height: 32, paddingLeft: 30, fontSize: 13 }}
+                                    aria-label="Search files"
+                                />
+                            </div>
                         </div>
-                        <div className="file-tree flex-1 overflow-auto p-2">
+                        <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
                             {filteredFiles.length === 0 ? (
-                                <div className="text-center py-8 text-slate-500">
-                                    <i className="ri-file-line text-3xl mb-2"></i>
-                                    <p className="text-sm">No files yet</p>
+                                <div className="flex flex-col items-center justify-center py-10 text-center">
+                                    <i className="ri-file-line text-[24px] mb-2" style={{ color: 'var(--nc-text-muted)' }} />
+                                    <p className="text-[12px] font-[500]" style={{ color: 'var(--nc-text-muted)' }}>No files yet</p>
                                 </div>
                             ) : (
-                                filteredFiles.map((file, index) => (
+                                filteredFiles.map((file, idx) => (
                                     <button
-                                        key={index}
-                                        onClick={() => {
-                                            setCurrentFile(file)
-                                            setOpenFiles([...new Set([...openFiles, file])])
+                                        key={idx}
+                                        onClick={() => { setCurrentFile(file); setOpenFiles([...new Set([...openFiles, file])]) }}
+                                        className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] text-left transition-all text-[13px] font-[500]"
+                                        style={{
+                                            background: currentFile === file ? 'rgba(124,92,255,0.12)' : 'transparent',
+                                            color: currentFile === file ? 'var(--nc-primary)' : 'var(--nc-text-secondary)',
+                                            border: `1px solid ${currentFile === file ? 'rgba(124,92,255,0.2)' : 'transparent'}`,
                                         }}
-                                        className={`w-full text-left p-2 px-3 rounded-lg flex items-center gap-2 transition-colors ${currentFile === file
-                                            ? 'bg-purple-600/20 text-purple-400'
-                                            : 'text-slate-300 hover:bg-slate-800'
-                                            }`}
+                                        onMouseEnter={e => { if (currentFile !== file) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'var(--nc-text-primary)' } }}
+                                        onMouseLeave={e => { if (currentFile !== file) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--nc-text-secondary)' } }}
                                     >
-                                        <i className="ri-file-code-line"></i>
-                                        <span className="text-sm truncate">{file}</span>
+                                        <i className="ri-file-code-line text-[14px] flex-shrink-0" />
+                                        <span className="truncate">{file}</span>
                                     </button>
                                 ))
                             )}
                         </div>
                     </div>
 
-                    {/* Code Editor Area */}
-                    <div className="flex-grow flex flex-col bg-slate-950">
-                        {/* Tabs */}
-                        <div className="flex items-center gap-1 bg-slate-900 border-b border-slate-800 p-2 overflow-x-auto">
+                    {/* Code Editor */}
+                    <div className="flex-grow flex flex-col bg-transparent overflow-hidden">
+                        {/* Open file tabs */}
+                        <div className="flex items-center gap-1 px-2 py-2 overflow-x-auto shrink-0 nc-scrollbar-hidden"
+                            style={{ background: 'var(--nc-surface)', borderBottom: '1px solid var(--nc-border)' }}>
                             {openFiles.length === 0 ? (
-                                <div className="text-slate-500 text-sm px-4 py-2">No files open</div>
+                                <span className="text-[13px] px-3 py-1" style={{ color: 'var(--nc-text-muted)' }}>No files open</span>
                             ) : (
-                                openFiles.map((file, index) => (
+                                openFiles.map((file, idx) => (
                                     <div
-                                        key={index}
+                                        key={idx}
                                         onClick={() => setCurrentFile(file)}
-                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg cursor-pointer transition-colors ${currentFile === file
-                                            ? 'bg-slate-800 text-white'
-                                            : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
-                                            }`}
+                                        className="flex items-center gap-2 px-3 py-1 rounded-[8px] cursor-pointer transition-all text-[13px] font-[500] flex-shrink-0"
+                                        style={{
+                                            background: currentFile === file ? 'var(--nc-elevated)' : 'transparent',
+                                            color: currentFile === file ? 'var(--nc-text-primary)' : 'var(--nc-text-secondary)',
+                                            border: `1px solid ${currentFile === file ? 'var(--nc-border)' : 'transparent'}`,
+                                        }}
                                     >
-                                        <i className="ri-file-code-line text-sm"></i>
-                                        <span className="text-sm">{file}</span>
-                                        <div className="flex items-center gap-1 ml-2">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    navigator.clipboard.writeText(fileTree[file].file.contents)
-                                                    toast.success('Copied to clipboard')
-                                                }}
-                                                className="hover:text-purple-400 transition-colors p-1"
-                                                title="Copy code"
-                                            >
-                                                <i className="ri-file-copy-line text-sm"></i>
-                                            </button>
-                                            <button
-                                                onClick={(e) => closeFile(file, e)}
-                                                className="hover:text-red-400 transition-colors p-1"
-                                            >
-                                                <i className="ri-close-line text-sm"></i>
-                                            </button>
-                                        </div>
+                                        <i className="ri-file-code-line text-[13px]" />
+                                        <span>{file}</span>
+                                        <button
+                                            onClick={(e) => closeFile(file, e)}
+                                            className="ml-1 rounded-full w-4 h-4 flex items-center justify-center text-[11px] transition-colors"
+                                            style={{ color: 'var(--nc-text-muted)' }}
+                                            onMouseEnter={e => e.currentTarget.style.color = 'var(--nc-text-primary)'}
+                                            onMouseLeave={e => e.currentTarget.style.color = 'var(--nc-text-muted)'}
+                                        >
+                                            <i className="ri-close-line" />
+                                        </button>
                                     </div>
                                 ))
                             )}
@@ -994,67 +1045,64 @@ const Project = () => {
                             {openFiles.length > 0 && (
                                 <Button
                                     onClick={async () => {
-                                        // Check if webContainer is ready
-                                        if (!webContainer) {
-                                            toast.error('WebContainer is not ready yet. Please wait a moment and try again.')
-                                            return
-                                        }
-
+                                        if (!webContainer) { toast.error('WebContainer is not ready yet.'); return }
                                         setIsRunning(true)
                                         try {
-                                            await webContainer.mount(transformFileTree(fileTree))
-
-                                            // Check if package.json exists and has changed
+                                            await webContainer.mount(fileTree)
                                             const packageJson = fileTree['package.json']?.file?.contents
                                             const needsInstall = packageJson && packageJson !== window.lastPackageJson
-
                                             if (needsInstall) {
-                                                toast.loading('Installing dependencies...', { id: 'install' })
-                                                const installProcess = await webContainer.spawn("npm", ["install"])
-
+                                                toast.loading('Installing dependencies…', { id: 'install' })
+                                                setTerminalOutput('Installing dependencies…\n')
+                                                const installProcess = await webContainer.spawn('npm', ['install'])
                                                 installProcess.output.pipeTo(new WritableStream({
                                                     write(chunk) {
+                                                        setTerminalOutput(prev => prev + chunk)
                                                         console.log(chunk)
                                                     }
                                                 }))
-
-                                                // Wait for install to complete
                                                 await installProcess.exit
                                                 window.lastPackageJson = packageJson
                                                 toast.success('Dependencies installed!', { id: 'install' })
                                             } else if (packageJson) {
+                                                setTerminalOutput('Using cached dependencies\n')
                                                 toast.success('Using cached dependencies', { duration: 1000 })
                                             }
 
-                                            // kill previous process if running
-                                            if (runProcess) {
-                                                console.log("Killing previous process");
-                                                try {
-                                                    runProcess.kill();
-                                                } catch (e) {
-                                                    console.warn("Failed to kill previous process:", e);
+                                            if (runProcess) runProcess.kill()
+                                            toast.loading('Starting server…', { id: 'start' })
+                                            setTerminalOutput(prev => prev + 'Starting server…\n')
+
+                                            let startCommand = 'node'
+                                            let startArgs = [fileTree['app.js'] ? 'app.js' : 'index.js']
+
+                                            try {
+                                                const pkg = JSON.parse(packageJson)
+                                                if (pkg.scripts && pkg.scripts.start) {
+                                                    const parts = pkg.scripts.start.trim().split(/\s+/)
+                                                    if (parts[0] === 'node') {
+                                                        startCommand = 'node'
+                                                        startArgs = parts.slice(1)
+                                                    } else {
+                                                        startCommand = 'npm'
+                                                        startArgs = ['start']
+                                                    }
+                                                } else if (pkg.main) {
+                                                    startCommand = 'node'
+                                                    startArgs = [pkg.main]
                                                 }
+                                            } catch (e) {
+                                                // Fallback
                                             }
 
-                                            toast.loading('Starting server...', { id: 'start' })
-
-                                            setIframeUrl(null) // Reset iframe
-
-                                            const randomPort = Math.floor(Math.random() * 1000) + 3000;
-                                            console.log("Starting server on port:", randomPort);
-
-                                            let tempRunProcess = await webContainer.spawn("npm", ["start"], {
-                                                env: {
-                                                    PORT: String(randomPort)
-                                                }
-                                            })
-
+                                            setTerminalOutput(prev => prev + `Running: ${startCommand} ${startArgs.join(' ')}\n`)
+                                            let tempRunProcess = await webContainer.spawn(startCommand, startArgs)
                                             tempRunProcess.output.pipeTo(new WritableStream({
                                                 write(chunk) {
+                                                    setTerminalOutput(prev => prev + chunk)
                                                     console.log(chunk)
                                                 }
                                             }))
-
                                             setRunProcess(tempRunProcess)
                                             toast.dismiss('start')
                                         } catch (error) {
@@ -1064,159 +1112,170 @@ const Project = () => {
                                             setIsRunning(false)
                                         }
                                     }}
-                                    variant="primary"
-                                    size="small"
+                                    size="sm"
                                     loading={isRunning}
-                                    className="ml-auto"
-                                    icon={<i className="ri-play-fill"></i>}
+                                    variant="primary"
+                                    icon={<i className="ri-play-fill" />}
+                                    className="ml-auto flex-shrink-0"
+                                    style={{ height: 30, padding: '0 12px', fontSize: 13 }}
                                 >
                                     Run
                                 </Button>
                             )}
                         </div>
 
-                        {/* Editor */}
-                        <div className="flex-grow overflow-hidden">
-                            {fileTree[currentFile] ? (
-                                <div className="h-full code-editor-container">
-                                    {/* Line Numbers */}
-                                    <div className="line-numbers">
-                                        {fileTree[currentFile].file.contents.split('\n').map((_, index) => (
-                                            <div key={index} className="line-number"></div>
-                                        ))}
+                        {/* Editor content */}
+                        <div className="flex-grow flex flex-col overflow-hidden">
+                            <div className="flex-grow overflow-auto relative">
+                                {fileTree[currentFile] ? (
+                                    <div className="h-full code-editor-container">
+                                        <div className="line-numbers">
+                                            {fileTree[currentFile].file.contents.split('\n').map((_, idx) => (
+                                                <div key={idx} className="line-number" />
+                                            ))}
+                                        </div>
+                                        <div className="code-content">
+                                            <pre className="hljs h-full">
+                                                <code
+                                                    className="hljs outline-none"
+                                                    contentEditable
+                                                    suppressContentEditableWarning
+                                                    onBlur={(e) => {
+                                                        const updatedContent = e.target.innerText
+                                                        const ft = { ...fileTree, [currentFile]: { file: { contents: updatedContent } } }
+                                                        setFileTree(ft)
+                                                        saveFileTree(ft)
+                                                    }}
+                                                    dangerouslySetInnerHTML={{ __html: hljs.highlight('javascript', fileTree[currentFile].file.contents).value }}
+                                                    style={{ whiteSpace: 'pre-wrap', paddingBottom: '25rem' }}
+                                                />
+                                            </pre>
+                                        </div>
                                     </div>
+                                ) : (
+                                    <div className="h-full flex items-center justify-center">
+                                        <div className="text-center">
+                                            <div className="w-16 h-16 mx-auto rounded-[16px] flex items-center justify-center mb-4"
+                                                style={{ background: 'rgba(124,92,255,0.1)', border: '1px solid rgba(124,92,255,0.2)' }}>
+                                                <i className="ri-terminal-box-line text-[28px]" style={{ color: 'var(--nc-primary)' }} />
+                                            </div>
+                                            <h3 className="text-[16px] font-[700] text-[var(--nc-text-primary)] mb-1">Editor Ready</h3>
+                                            <p className="text-[13px]" style={{ color: 'var(--nc-text-secondary)' }}>Select a file from the explorer</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
 
-                                    {/* Code Content */}
-                                    <div className="code-content">
-                                        <pre className="hljs h-full">
-                                            <code
-                                                className="hljs outline-none"
-                                                contentEditable
-                                                suppressContentEditableWarning
-                                                onBlur={(e) => {
-                                                    const updatedContent = e.target.innerText
-                                                    const ft = {
-                                                        ...fileTree,
-                                                        [currentFile]: {
-                                                            file: {
-                                                                contents: updatedContent
-                                                            }
-                                                        }
-                                                    }
-                                                    setFileTree(ft)
-                                                    saveFileTree(ft)
-                                                }}
-                                                dangerouslySetInnerHTML={{
-                                                    __html: hljs.highlight('javascript', fileTree[currentFile].file.contents).value
-                                                }}
-                                                style={{
-                                                    whiteSpace: 'pre-wrap',
-                                                    paddingBottom: '25rem',
-                                                }}
-                                            />
-                                        </pre>
+                            {/* Terminal output panel */}
+                            {terminalOutput && (
+                                <div
+                                    className="h-44 border-t flex flex-col shrink-0"
+                                    style={{ background: '#09090F', borderColor: 'var(--nc-border)' }}
+                                >
+                                    <div className="px-4 py-2 flex items-center justify-between border-b" style={{ borderColor: 'var(--nc-border)' }}>
+                                        <div className="flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--nc-primary)' }} />
+                                            <span className="text-[10px] font-[700] uppercase tracking-[0.08em]" style={{ color: 'var(--nc-text-secondary)' }}>Console Output</span>
+                                        </div>
+                                        <button
+                                            onClick={() => setTerminalOutput('')}
+                                            className="text-[10px] font-[600] hover:text-[var(--nc-text-primary)]"
+                                            style={{ color: 'var(--nc-text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                                        >
+                                            Clear
+                                        </button>
                                     </div>
-                                </div>
-                            ) : (
-                                <div className="h-full flex items-center justify-center text-slate-500">
-                                    <div className="text-center">
-                                        <i className="ri-code-s-slash-line text-6xl mb-4"></i>
-                                        <p>Select a file to start editing</p>
-                                    </div>
+                                    <pre
+                                        className="flex-grow p-3 overflow-y-auto font-mono text-[11px] leading-relaxed whitespace-pre-wrap select-text nc-scrollbar-hidden"
+                                        style={{ color: '#E2E8F0', margin: 0 }}
+                                        ref={(el) => { if (el) el.scrollTop = el.scrollHeight }}
+                                    >
+                                        {terminalOutput}
+                                    </pre>
                                 </div>
                             )}
                         </div>
                     </div>
                 </section>
 
-                {/* Right Panel - Preview */}
-                {iframeUrl && (
-                    <motion.section
-                        initial={{ width: 0 }}
-                        animate={{ width: '400px' }}
-                        className="bg-slate-900 border-l border-slate-800 flex flex-col"
-                    >
-                        <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950">
-                            <h2 className="text-sm font-semibold text-white">PREVIEW</h2>
+                {/* ── Right: Live Preview & AI Assistant ── */}
+                <motion.section
+                    className="flex flex-col shrink-0 overflow-hidden"
+                    style={{ 
+                        width: 320, 
+                        background: 'var(--nc-bg)', 
+                        borderLeft: '1px solid var(--nc-border)', 
+                        position: 'relative', 
+                        zIndex: 20 
+                    }}
+                >
+                    {iframeUrl && webContainer ? (
+                        <>
+                            <div className="flex items-center gap-2 px-4 py-3 shrink-0" style={{ borderBottom: '1px solid var(--nc-border)' }}>
+                                <div className="w-6 h-6 rounded-[6px] flex items-center justify-center" style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.25)' }}>
+                                    <span className="w-2 h-2 rounded-full" style={{ background: 'var(--nc-success)' }} />
+                                </div>
+                                <span className="text-[12px] font-[700]" style={{ color: 'var(--nc-success)' }}>LIVE PREVIEW</span>
+                                <input
+                                    type="text" value={iframeUrl} readOnly
+                                    className="nc-input flex-1"
+                                    style={{ height: 30, fontSize: 12, marginLeft: 8, cursor: 'default' }}
+                                    title="WebContainer URL"
+                                />
+                            </div>
+                            <iframe src={iframeUrl} className="flex-1 bg-white" title="Preview" />
+                        </>
+                    ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                            <RobotSkeleton 
+                                state={isRunning ? 'thinking' : terminalOutput.includes('Error:') ? 'error' : 'idle'} 
+                                message={isRunning ? 'Compiling server…' : 'Awaiting start commands. Click Run to boot!'}
+                            />
                         </div>
-
-                        <div className="flex-1 bg-slate-950 p-2 overflow-hidden relative">
-                            {/* Iframe for web apps */}
-                            <iframe
-                                src={iframeUrl}
-                                className="absolute inset-0 w-full h-full bg-white"
-                                style={{ zIndex: 10 }}
-                            ></iframe>
-                        </div>
-                    </motion.section>
-                )}
+                    )}
+                </motion.section>
             </div>
 
-            {/* Add Collaborators Modal */}
-            < Modal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                title="Add Collaborators"
-                size="medium"
-            >
-                <div className="users-list flex flex-col gap-2 mb-6 max-h-96 overflow-auto">
-                    {users.filter(u => !project.users.find(pu => pu._id === u._id)).map(user => (
-                        <div
-                            key={user._id}
-                            className={`user cursor-pointer hover:bg-white/5 p-3 rounded-lg flex gap-3 items-center transition-colors ${selectedUserId.has(user._id) ? 'bg-purple-600/20 border border-purple-500' : ''
-                                }`}
-                            onClick={() => handleUserClick(user._id)}
+            {/* ── Add Collaborators Modal ── */}
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add collaborators" subtitle="Invite team members to this project" size="md">
+                <div className="space-y-2 mb-5 max-h-80 overflow-y-auto">
+                    {users.filter(u => !project.users.find(pu => pu._id === u._id)).map(u => (
+                        <button
+                            key={u._id}
+                            className="w-full flex items-center gap-3 p-3 rounded-[12px] text-left transition-all"
+                            style={{
+                                background: selectedUserId.has(u._id) ? 'rgba(124,92,255,0.1)' : 'var(--nc-surface)',
+                                border: `1px solid ${selectedUserId.has(u._id) ? 'rgba(124,92,255,0.3)' : 'var(--nc-border)'}`,
+                            }}
+                            onClick={() => handleUserClick(u._id)}
                         >
-                            <div className='w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-violet-500 flex items-center justify-center text-white font-semibold'>
-                                {user.email.charAt(0).toUpperCase()}
-                            </div>
-                            <h3 className='font-semibold text-white flex-1'>{user.email}</h3>
-                            {selectedUserId.has(user._id) && (
-                                <i className="ri-check-line text-purple-400"></i>
+                            <Avatar email={u.email} size="md" />
+                            <span className="flex-1 text-[14px] font-[600] text-[var(--nc-text-primary)]">{u.email}</span>
+                            {selectedUserId.has(u._id) && (
+                                <i className="ri-checkbox-circle-fill text-[18px]" style={{ color: 'var(--nc-primary)' }} />
                             )}
-                        </div>
+                        </button>
                     ))}
                 </div>
-                <div className="flex justify-end gap-3">
-                    <Button
-                        variant="secondary"
-                        onClick={() => setIsModalOpen(false)}
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        variant="primary"
-                        onClick={addCollaborators}
-                        disabled={selectedUserId.size === 0}
-                        icon={<i className="ri-user-add-line"></i>}
-                    >
+                <div className="flex gap-3">
+                    <Button variant="secondary" onClick={() => setIsModalOpen(false)} fullWidth>Cancel</Button>
+                    <Button variant="primary" onClick={addCollaborators} disabled={selectedUserId.size === 0} icon={<i className="ri-user-add-line" />} fullWidth>
                         Add {selectedUserId.size > 0 ? `(${selectedUserId.size})` : ''}
                     </Button>
                 </div>
-            </Modal >
+            </Modal>
 
-            {/* File Upload Modal */}
-            < Modal
-                isOpen={isFileUploadModalOpen}
-                onClose={() => !uploadingFiles && setIsFileUploadModalOpen(false)}
-                title="Upload Files"
-                size="large"
-            >
+            {/* ── File Upload Modal ── */}
+            <Modal isOpen={isFileUploadModalOpen} onClose={() => !uploadingFiles && setIsFileUploadModalOpen(false)} title="Upload files" size="lg">
                 <FileUpload onFilesSelected={handleFileUpload} />
-                {
-                    uploadingFiles && (
-                        <div className="mt-4 text-center">
-                            <div className="inline-flex items-center gap-2 text-purple-400">
-                                <div className="animate-spin">
-                                    <i className="ri-loader-4-line text-xl"></i>
-                                </div>
-                                <span>Uploading files...</span>
-                            </div>
-                        </div>
-                    )
-                }
-            </Modal >
-        </main >
+                {uploadingFiles && (
+                    <div className="mt-4 flex items-center justify-center gap-2" style={{ color: 'var(--nc-primary)' }}>
+                        <i className="ri-loader-4-line nc-spin text-[18px]" />
+                        <span className="text-[14px] font-[600]">Uploading files…</span>
+                    </div>
+                )}
+            </Modal>
+        </div>
     )
 }
 

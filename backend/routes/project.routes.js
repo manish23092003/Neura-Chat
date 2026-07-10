@@ -30,6 +30,11 @@ router.get('/get-project/:projectId',
     projectController.getProjectById
 )
 
+router.get('/get-messages/:projectId',
+    authMiddleWare.authUser,
+    projectController.getMessages
+)
+
 router.put('/update-file-tree',
     authMiddleWare.authUser,
     body('projectId').isString().withMessage('Project ID is required'),
@@ -83,8 +88,6 @@ router.put('/:projectId/tasks/:taskId/toggle',
     authMiddleWare.authUser,
     projectController.toggleTaskCompletion
 )
-
-router.put('/:projectId/clear-chat', authMiddleWare.authUser, projectController.clearChat);
 
 
 export default router;

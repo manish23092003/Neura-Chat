@@ -1,2 +1,7 @@
 .env
 node_modules
+.DS_Store
+backend/uploads/
+backend/.env
+frontend/.env
+frontend/dist/

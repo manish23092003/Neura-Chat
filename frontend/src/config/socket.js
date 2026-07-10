@@ -3,9 +3,8 @@ import socket from 'socket.io-client';
 
 let socketInstance = null;
 
-
 export const initializeSocket = (projectId) => {
-    // If socket is already initialized with a different project ID, disconnect it
+    // If socket is already initialized with a different project, disconnect it
     if (socketInstance && socketInstance.query?.projectId !== projectId) {
         socketInstance.disconnect();
         socketInstance = null;
@@ -20,7 +19,8 @@ export const initializeSocket = (projectId) => {
                 projectId
             }
         });
-        // Store project ID to check against later (though socket.io stores it in query too, but locally is safer if we want to be explicit)
+
+        // Store projectId on the instance for caching checks
         socketInstance.query = { projectId };
     }
 

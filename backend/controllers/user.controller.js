@@ -2,6 +2,7 @@ import userModel from '../models/user.model.js';
 import * as userService from '../services/user.service.js';
 import { validationResult } from 'express-validator';
 import redisClient from '../services/redis.service.js';
+import crypto from 'crypto';
 
 
 export const createUserController = async (req, res) => {
@@ -77,7 +78,7 @@ export const profileController = async (req, res) => {
 export const logoutController = async (req, res) => {
     try {
 
-        const token = req.cookies.token || req.headers.authorization.split(' ')[ 1 ];
+        const token = req.cookies.token || req.headers.authorization.split(' ')[1];
 
         redisClient.set(token, 'logout', 'EX', 60 * 60 * 24);
 
@@ -111,5 +112,28 @@ export const getAllUsersController = async (req, res) => {
 
         res.status(400).json({ error: err.message })
 
+    }
+}
+
+// Forgot password controllers removed as per user request
+
+export const updateProfileController = async (req, res) => {
+    try {
+        const { name, bio, avatar } = req.body
+
+        const updatedUser = await userModel.findOneAndUpdate(
+            { email: req.user.email },
+            { name, bio, avatar },
+            { new: true, runValidators: true }
+        )
+
+        if (!updatedUser) {
+            return res.status(404).json({ error: 'User not found' })
+        }
+
+        res.status(200).json({ user: updatedUser, message: 'Profile updated successfully' })
+    } catch (err) {
+        console.log(err)
+        res.status(400).json({ error: err.message })
     }
 }

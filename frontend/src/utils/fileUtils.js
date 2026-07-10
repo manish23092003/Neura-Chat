@@ -130,38 +130,3 @@ export const getThumbnailUrl = (file) => {
     }
     return null;
 };
-
-/**
- * Transform flat file object to WebContainer nested tree structure
- * @param {Object} fileTree - Flat object with paths as keys
- * @returns {Object} Nested tree object
- */
-export const transformFileTree = (fileTree) => {
-    const tree = {};
-
-    Object.keys(fileTree).forEach(path => {
-        const parts = path.split('/');
-        let current = tree;
-
-        parts.forEach((part, index) => {
-            if (index === parts.length - 1) {
-                // It's a file
-                current[part] = {
-                    file: {
-                        contents: fileTree[path].file.contents
-                    }
-                };
-            } else {
-                // It's a directory
-                if (!current[part]) {
-                    current[part] = {
-                        directory: {}
-                    };
-                }
-                current = current[part].directory;
-            }
-        });
-    });
-
-    return tree;
-}

@@ -19,11 +19,11 @@ router.post('/login',
 
 router.get('/profile', authMiddleware.authUser, userController.profileController);
 
+router.put('/profile', authMiddleware.authUser, userController.updateProfileController);
 
 router.get('/logout', authMiddleware.authUser, userController.logoutController);
 
 
 router.get('/all', authMiddleware.authUser, userController.getAllUsersController);
-
 
 export default router;

@@ -5,11 +5,11 @@ import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import path from 'path';
+import fs from 'fs';
+import crypto from 'crypto';
 import projectModel from './models/project.model.js';
+import messageModel from './models/message.model.js';
 import { generateResult, extractFileContent } from './services/ai.service.js';
-import connect from './db/db.js';
-
-connect();
 
 const port = process.env.PORT || 3000;
 
@@ -37,6 +37,9 @@ io.use(async (socket, next) => {
 
         socket.project = await projectModel.findById(projectId);
 
+        if (!socket.project) {
+            return next(new Error('Project not found'));
+        }
 
         if (!token) {
             return next(new Error('Authentication error'))
@@ -50,21 +53,23 @@ io.use(async (socket, next) => {
 
 
         socket.user = decoded;
-
         next();
 
     } catch (error) {
+        console.error('Socket middleware error:', error.message);
         next(error)
     }
-
 })
 
 
 io.on('connection', socket => {
+    if (!socket.project) {
+        console.log('Project not found for socket, disconnecting');
+        return socket.disconnect();
+    }
+    
     socket.roomId = socket.project._id.toString()
-
-
-    console.log('a user connected');
+    console.log('a user connected to project:', socket.roomId);
 
 
 
@@ -73,23 +78,22 @@ io.on('connection', socket => {
     socket.on('project-message', async data => {
 
         const message = data.message;
-
         const aiIsPresentInMessage = message.includes('@ai');
-        socket.broadcast.to(socket.roomId).emit('project-message', data)
 
+        // Save incoming user message to database
         try {
-            await projectModel.findByIdAndUpdate(socket.roomId, {
-                $push: {
-                    messages: {
-                        sender: data.sender._id, // Save ObjectId for proper population
-                        message: data.message,
-                        timestamp: data.timestamp
-                    }
-                }
-            })
-        } catch (err) {
-            console.log("Error saving message:", err)
+            await messageModel.create({
+                _id: data._id, // use client generated UUID
+                message: data.message,
+                sender: data.sender,
+                project: socket.roomId,
+                timestamp: data.timestamp || new Date()
+            });
+        } catch(e) {
+            console.error('Failed to save message to DB', e);
         }
+
+        socket.broadcast.to(socket.roomId).emit('project-message', data)
 
         if (aiIsPresentInMessage) {
             const prompt = message.replace('@ai', '');
@@ -105,49 +109,38 @@ io.on('connection', socket => {
                 }
 
                 const result = await generateResult(prompt, fileContext);
-                const aiMessage = {
+                const aiMessageData = {
+                    _id: crypto.randomUUID(),
                     message: result,
                     sender: {
                         _id: 'ai',
                         email: 'AI'
                     },
-                    timestamp: new Date().toISOString()
+                    timestamp: new Date().toISOString(),
+                    reactions: []
+                };
+
+                try {
+                    await messageModel.create({
+                        _id: aiMessageData._id,
+                        message: aiMessageData.message,
+                        sender: aiMessageData.sender,
+                        project: socket.roomId,
+                        timestamp: aiMessageData.timestamp
+                    });
+                } catch(e) {
+                    console.error('Failed to save AI message', e);
                 }
 
-                io.to(socket.roomId).emit('project-message', aiMessage)
-
-                await projectModel.findByIdAndUpdate(socket.roomId, {
-                    $push: {
-                        messages: {
-                            sender: 'ai',
-                            message: result,
-                            timestamp: aiMessage.timestamp
-                        }
-                    }
-                })
+                io.to(socket.roomId).emit('project-message', aiMessageData)
             } catch (err) {
-                console.error("Critical AI Error:", err);
-                const errorMessage = "AI request failed. Please try again later. (Error: " + err.message + ")";
                 io.to(socket.roomId).emit('project-message', {
-                    message: errorMessage,
+                    message: "AI request failed. Please try again later. (Error: " + err.message + ")",
                     sender: {
                         _id: 'ai',
                         email: 'AI'
                     }
                 })
-                try {
-                    await projectModel.findByIdAndUpdate(socket.roomId, {
-                        $push: {
-                            messages: {
-                                sender: 'ai',
-                                message: errorMessage,
-                                timestamp: new Date().toISOString()
-                            }
-                        }
-                    })
-                } catch (saveErr) {
-                    console.error("Failed to save AI error message:", saveErr);
-                }
             }
             return
         }
@@ -158,22 +151,22 @@ io.on('connection', socket => {
     // Handle file messages
     socket.on('project-file-message', async data => {
         console.log('File message received:', data);
-        socket.broadcast.to(socket.roomId).emit('project-file-message', data);
 
+        // Save incoming file message to database
         try {
-            await projectModel.findByIdAndUpdate(socket.roomId, {
-                $push: {
-                    messages: {
-                        sender: data.sender._id || data.sender,
-                        message: data.message,
-                        files: data.files,
-                        timestamp: data.timestamp
-                    }
-                }
-            })
-        } catch (err) {
-            console.log("Error saving file message:", err)
+            await messageModel.create({
+                _id: data._id,
+                message: data.message,
+                sender: data.sender,
+                project: socket.roomId,
+                files: data.files,
+                timestamp: data.timestamp || new Date()
+            });
+        } catch(e) {
+            console.error('Failed to save file message to DB', e);
         }
+
+        socket.broadcast.to(socket.roomId).emit('project-file-message', data);
 
         // Check if AI is mentioned in the file message
         if (data.message && data.message.includes('@ai')) {
@@ -202,55 +195,54 @@ io.on('connection', socket => {
                 }
 
                 const result = await generateResult(prompt, fileContext);
-                const aiMessage = {
+                const aiMessageData = {
+                    _id: crypto.randomUUID(),
                     message: result,
                     sender: {
                         _id: 'ai',
                         email: 'AI'
                     },
-                    timestamp: new Date().toISOString()
+                    timestamp: new Date().toISOString(),
+                    reactions: []
+                };
+
+                try {
+                    await messageModel.create({
+                        _id: aiMessageData._id,
+                        message: aiMessageData.message,
+                        sender: aiMessageData.sender,
+                        project: socket.roomId,
+                        timestamp: aiMessageData.timestamp
+                    });
+                } catch(e) {
+                    console.error('Failed to save AI file analysis message', e);
                 }
 
-                io.to(socket.roomId).emit('project-message', aiMessage)
-
-                await projectModel.findByIdAndUpdate(socket.roomId, {
-                    $push: {
-                        messages: {
-                            sender: 'ai',
-                            message: result,
-                            timestamp: aiMessage.timestamp
-                        }
-                    }
-                })
+                io.to(socket.roomId).emit('project-message', aiMessageData)
             } catch (err) {
                 console.error('Error processing file for AI:', err);
-                const errorMessage = "AI request failed to analyze file. (Error: " + err.message + ")";
                 io.to(socket.roomId).emit('project-message', {
-                    message: errorMessage,
+                    message: "AI request failed to analyze file. (Error: " + err.message + ")",
                     sender: {
                         _id: 'ai',
                         email: 'AI'
                     }
                 })
-                try {
-                    await projectModel.findByIdAndUpdate(socket.roomId, {
-                        $push: {
-                            messages: {
-                                sender: 'ai',
-                                message: errorMessage,
-                                timestamp: new Date().toISOString()
-                            }
-                        }
-                    })
-                } catch (saveErr) {
-                    console.error("Failed to save AI File error message:", saveErr);
-                }
             }
         }
     })
 
     // Handle message reactions
-    socket.on('message-reaction', data => {
+    socket.on('message-reaction', async data => {
+        try {
+            if (data.messageId) {
+                await messageModel.findByIdAndUpdate(data.messageId, {
+                    $set: { reactions: data.reactions }
+                });
+            }
+        } catch(e) {
+            console.error('Failed to save reaction', e);
+        }
         socket.broadcast.to(socket.roomId).emit('message-reaction', data)
     })
 
@@ -261,10 +253,6 @@ io.on('connection', socket => {
         } else {
             socket.broadcast.to(socket.roomId).emit('user-typing-stop', data)
         }
-    })
-
-    socket.on('project-chat-cleared', data => {
-        socket.broadcast.to(socket.roomId).emit('project-chat-cleared', data)
     })
 
     socket.on('disconnect', () => {

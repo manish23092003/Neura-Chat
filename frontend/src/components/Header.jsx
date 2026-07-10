@@ -1,111 +1,67 @@
-import React, { useContext, useState, useRef, useEffect } from 'react'
-import { UserContext } from '../context/user.context'
-import { useNavigate, useLocation } from 'react-router-dom'
+              border: '1px solid var(--nc-border)',
+            }}
+          >
+            ⌘K
+          </kbd>
+        </div>
 
-const Header = () => {
-    const { user, setUser } = useContext(UserContext)
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-    const dropdownRef = useRef(null)
-    const navigate = useNavigate()
-    const location = useLocation()
+        {/* Right actions */}
+        <div className="flex items-center gap-2 ml-auto flex-shrink-0">
 
-    const handleLogout = () => {
-        localStorage.removeItem('token')
-        setUser(null)
-        navigate('/login')
-    }
+          {/* AI Command */}
+          <button
+            className="hidden md:flex items-center gap-2 px-3 h-9 rounded-[10px] text-[13px] font-[600] transition-all"
+            style={{
+              background: 'rgba(124,92,255,0.1)',
+              color: '#A78BFA',
+              border: '1px solid rgba(124,92,255,0.2)',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'rgba(124,92,255,0.18)'
+              e.currentTarget.style.borderColor = 'rgba(124,92,255,0.35)'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'rgba(124,92,255,0.1)'
+              e.currentTarget.style.borderColor = 'rgba(124,92,255,0.2)'
+            }}
+            aria-label="AI Assistant"
+          >
+            <i className="ri-sparkling-2-line text-[15px]" />
+            <span>AI</span>
+          </button>
 
-    // Close dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-                setIsDropdownOpen(false)
-            }
-        }
 
-        document.addEventListener('mousedown', handleClickOutside)
-        return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [])
-
-    // Get user initials
-    const getInitials = (email) => {
-        if (!email) return 'U'
-        return email.charAt(0).toUpperCase()
-    }
-
-    // Get page title based on route
-    const getPageTitle = () => {
-        if (location.pathname === '/') return 'NeuraChat'
-        if (location.pathname === '/project') return 'Project Workspace'
-        return 'NeuraChat'
-    }
-
-    return (
-        <header className="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
-            <div className="px-6 py-4">
-                <div className="flex items-center justify-between">
-                    {/* Logo and Title */}
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-600 to-violet-600 flex items-center justify-center">
-                                <i className="ri-code-s-slash-line text-white text-xl"></i>
-                            </div>
-                            <div>
-                                <h1 className="text-xl font-bold text-white">{getPageTitle()}</h1>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* User Menu */}
-                    {user && (
-                        <div className="relative" ref={dropdownRef}>
-                            <button
-                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors"
-                            >
-                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-violet-500 flex items-center justify-center text-white font-semibold">
-                                    {getInitials(user.email)}
-                                </div>
-                                <span className="text-slate-300 hidden md:block">{user.email}</span>
-                                <i className={`ri-arrow-down-s-line text-slate-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}></i>
-                            </button>
-
-                            {/* Dropdown Menu */}
-                            {isDropdownOpen && (
-                                <div className="absolute right-0 mt-2 w-56 glass-strong rounded-lg shadow-xl border border-white/10 overflow-hidden scale-in">
-                                    <div className="p-3 border-b border-white/10">
-                                        <p className="text-sm text-slate-400">Signed in as</p>
-                                        <p className="text-white font-medium truncate">{user.email}</p>
-                                    </div>
-
-                                    <div className="p-2">
-                                        <button
-                                            onClick={() => {
-                                                navigate('/')
-                                                setIsDropdownOpen(false)
-                                            }}
-                                            className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
-                                        >
-                                            <i className="ri-dashboard-line"></i>
-                                            <span>Dashboard</span>
-                                        </button>
-
-                                        <button
-                                            onClick={handleLogout}
-                                            className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-red-500/10 text-red-400 hover:text-red-300 transition-colors"
-                                        >
-                                            <i className="ri-logout-box-line"></i>
-                                            <span>Logout</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </div>
-        </header>
-    )
+          {/* Profile */}
+          {user && (
+            <Dropdown
+              trigger={
+                <button
+                  className="flex items-center gap-2.5 pl-1 pr-2 py-1 rounded-[12px] transition-colors"
+                  style={{ border: '1px solid var(--nc-border)' }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--nc-border-hover)'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--nc-border)'}
+                  aria-label="User menu"
+                >
+                  <Avatar email={user.email} name={user.name} size="sm" />
+                  <div className="hidden md:flex flex-col items-start leading-none">
+                    <span className="text-[13px] font-[600] text-[var(--nc-text-primary)]">
+                      {user.name || user.email?.split('@')[0] || 'User'}
+                    </span>
+                    <span className="text-[11px] truncate max-w-[100px]" style={{ color: 'var(--nc-text-muted)' }}>
+                      {user.email}
+                    </span>
+                  </div>
+                  <i className="ri-arrow-down-s-line text-[14px] hidden md:block" style={{ color: 'var(--nc-text-muted)' }} />
+                </button>
+              }
+              items={profileItems}
+              placement="bottom-right"
+            />
+          )}
+        </div>
+      </div>
+    </header>
+  )
 }
 
 export default Header

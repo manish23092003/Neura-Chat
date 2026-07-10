@@ -107,30 +107,27 @@ const FilePreview = ({ file, onDownload }) => {
 
     // Document/Other Files Preview
     return (
-        <div className="flex items-center gap-4 p-3 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-purple-500/50 rounded-xl transition-all group/file cursor-pointer max-w-sm">
-            <div className={`w-12 h-12 rounded-lg flex items-center justify-center bg-slate-700/50 text-2xl group-hover/file:bg-purple-500/10 group-hover/file:text-purple-400 transition-colors`}>
-                <i className={getFileIcon(file.mimetype)}></i>
-            </div>
-            <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-medium text-slate-200 truncate" title={file.originalName}>
-                    {file.originalName}
-                </h4>
-                <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
-                    <span>{formatFileSize(file.size)}</span>
-                    <span className="w-1 h-1 bg-slate-600 rounded-full"></span>
-                    <span className="uppercase">{file.mimetype?.split('/')[1] || 'FILE'}</span>
+        <div className="file-preview-container file-preview-document">
+            <div className="file-preview-document-wrapper">
+                <i className={`${getFileIcon(file.mimetype)} file-document-icon`}></i>
+                <div className="file-document-info">
+                    <div className="file-preview-name">
+                        <span className="file-name-text">{file.originalName}</span>
+                    </div>
+                    <div className="file-preview-meta">
+                        <span className="file-size">{formatFileSize(file.size)}</span>
+                        <span className="file-type">{file.mimetype?.split('/')[1]?.toUpperCase() || 'FILE'}</span>
+                    </div>
                 </div>
+                <button
+                    onClick={() => onDownload(fileUrl, file.originalName)}
+                    className="file-download-btn-large"
+                    title="Download"
+                >
+                    <i className="ri-download-cloud-line"></i>
+                    <span>Download</span>
+                </button>
             </div>
-            <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onDownload(fileUrl, file.originalName);
-                }}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-full transition-colors opacity-0 group-hover/file:opacity-100"
-                title="Download"
-            >
-                <i className="ri-download-cloud-line text-lg"></i>
-            </button>
         </div>
     );
 };
