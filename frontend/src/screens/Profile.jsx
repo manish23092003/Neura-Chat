@@ -270,7 +270,8 @@ function SecurityTab() {
       toast.success('Password changed successfully!')
       setCurrentPwd(''); setNewPwd(''); setConfirmPwd('')
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to change password')
+      const msg = err.response?.data?.message || err.response?.data?.error || (typeof err.response?.data === 'string' ? err.response.data : null) || 'Failed to change password'
+      toast.error(msg)
     } finally {
       setSaving(false)
     }
@@ -380,7 +381,8 @@ const Profile = () => {
       setUser(res.data.user)
       toast.success('Profile updated!')
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to update profile')
+      const msg = err.response?.data?.message || err.response?.data?.error || (typeof err.response?.data === 'string' ? err.response.data : null) || 'Failed to update profile'
+      toast.error(msg)
     }
   }, [setUser])
 

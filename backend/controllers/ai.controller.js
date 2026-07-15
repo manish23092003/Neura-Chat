@@ -7,6 +7,6 @@ export const getResult = async (req, res) => {
         const result = await ai.generateResult(prompt);
         res.send(result);
     } catch (error) {
-        res.status(500).send({ message: error.message });
+        res.status(500).json({ message: error.message });
     }
 }

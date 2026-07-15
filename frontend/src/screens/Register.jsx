@@ -139,7 +139,7 @@ const Register = () => {
       toast.success('Account created successfully! 🎉')
       setTimeout(() => navigate('/home'), 2000)
     } catch (err) {
-      const msg = err.response?.data?.message || 'Registration failed. Please try again.'
+      const msg = err.response?.data?.message || err.response?.data?.error || (typeof err.response?.data === 'string' ? err.response.data : null) || 'Registration failed. Please try again.'
       setFormError(msg)
       toast.error(msg)
     } finally {

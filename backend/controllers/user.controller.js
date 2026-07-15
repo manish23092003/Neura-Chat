@@ -21,7 +21,7 @@ export const createUserController = async (req, res) => {
 
         res.status(201).json({ user, token });
     } catch (error) {
-        res.status(400).send(error.message);
+        res.status(400).json({ message: error.message });
     }
 }
 
@@ -63,7 +63,7 @@ export const loginController = async (req, res) => {
 
         console.log(err);
 
-        res.status(400).send(err.message);
+        res.status(400).json({ message: err.message });
     }
 }
 
@@ -89,7 +89,7 @@ export const logoutController = async (req, res) => {
 
     } catch (err) {
         console.log(err);
-        res.status(400).send(err.message);
+        res.status(400).json({ message: err.message });
     }
 }
 

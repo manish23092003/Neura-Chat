@@ -123,7 +123,7 @@ const Login = () => {
       toast.success('Welcome back!')
       navigate('/home')
     } catch (err) {
-      const msg = err.response?.data?.message || 'Invalid credentials. Please try again.'
+      const msg = err.response?.data?.message || err.response?.data?.error || (typeof err.response?.data === 'string' ? err.response.data : null) || 'Invalid credentials. Please try again.'
       setFormError(msg)
       toast.error(msg)
     } finally {
