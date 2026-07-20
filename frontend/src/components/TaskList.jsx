@@ -139,7 +139,7 @@ const TaskList = ({ tasks = [], projectUsers = [], onCreateTask, onUpdateTask, o
                             borderRadius: 10,
                             background: showAddForm ? 'rgba(255,255,255,0.06)' : 'var(--nc-primary)',
                             border: `1px solid ${showAddForm ? 'var(--nc-border)' : 'transparent'}`,
-                            color: showAddForm ? 'var(--nc-text-secondary)' : '#fff',
+                            color: showAddForm ? 'var(--nc-text-secondary)' : 'var(--nc-bg)',
                             fontSize: 12,
                             fontWeight: 700,
                             cursor: 'pointer',

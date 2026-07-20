@@ -289,16 +289,16 @@ const Landing = () => {
         </section>
 
         {/* ─── CTA ─── */}
-        <section className="w-full max-w-[1280px] px-6 text-center">
-          <div className="rounded-[24px] bg-[var(--nc-primary)] text-[var(--nc-bg)] py-20 px-6 flex flex-col items-center shadow-lg">
+        <section className="w-full max-w-[1280px] px-6 text-center mb-32">
+          <div className="rounded-[24px] bg-[var(--nc-surface)] border border-[var(--nc-border)] py-20 px-6 flex flex-col items-center shadow-sm">
             <h2 className="text-[36px] font-[700] tracking-tight mb-6">Start building today.</h2>
-            <p className="text-[18px] opacity-80 mb-10 max-w-[500px]">
+            <p className="text-[18px] text-[var(--nc-text-secondary)] mb-10 max-w-[500px]">
               Join the developers who are shipping faster with NeuraChat's collaborative AI workspace.
             </p>
             <Link to="/register">
-              <button className="h-[48px] px-8 rounded-[12px] bg-[var(--nc-bg)] text-[var(--nc-primary)] font-[600] hover:scale-[0.98] transition-transform duration-150 shadow-sm">
+              <Button size="lg" className="h-[48px] px-8 text-[15px]">
                 Get Started for Free
-              </button>
+              </Button>
             </Link>
           </div>
         </section>
