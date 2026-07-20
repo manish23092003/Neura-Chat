@@ -1,8 +1,9 @@
 import projectModel from '../models/project.model.js';
 import mongoose from 'mongoose';
+import crypto from 'crypto';
 
 export const createProject = async ({
-    name, userId, description, tags
+    name, userId, description, tags, role
 }) => {
     if (!name) {
         throw new Error('Name is required')
@@ -13,9 +14,15 @@ export const createProject = async ({
 
     let project;
     try {
+        const roles = {};
+        if (role) {
+            roles[userId.toString()] = role;
+        }
+
         project = await projectModel.create({
             name,
             users: [userId],
+            roles,
             description: description || '',
             tags: tags || []
         });
@@ -105,8 +112,6 @@ export const addUsersToProject = async ({ projectId, users, userId }) => {
         users: userId
     })
 
-    console.log(project)
-
     if (!project) {
         throw new Error("User not belong to this project")
     }
@@ -115,7 +120,7 @@ export const addUsersToProject = async ({ projectId, users, userId }) => {
         _id: projectId
     }, {
         $addToSet: {
-            users: {
+            pendingUsers: {
                 $each: users
             }
         }
@@ -125,8 +130,52 @@ export const addUsersToProject = async ({ projectId, users, userId }) => {
 
     return updatedProject
 
+}
 
+export const getPendingInvitations = async ({ userId }) => {
+    if (!userId) {
+        throw new Error("userId is required")
+    }
 
+    // Find all projects where this user is in the pendingUsers list
+    const invitations = await projectModel.find({
+        pendingUsers: userId
+    }).populate('users', 'email name') // populate the members who invited them
+
+    return invitations;
+}
+
+export const respondToInvitation = async ({ projectId, userId, accept }) => {
+    if (!projectId || !userId) {
+        throw new Error("projectId and userId are required")
+    }
+
+    const project = await projectModel.findById(projectId)
+    if (!project) {
+        throw new Error("Project not found")
+    }
+
+    // Verify user actually has a pending invitation
+    const hasInvitation = project.pendingUsers.some(id => id.toString() === userId.toString())
+    if (!hasInvitation) {
+        throw new Error("No pending invitation found for this user in this project")
+    }
+
+    let updatedProject;
+    if (accept) {
+        // Move from pendingUsers to users
+        updatedProject = await projectModel.findByIdAndUpdate(projectId, {
+            $pull: { pendingUsers: userId },
+            $addToSet: { users: userId }
+        }, { new: true })
+    } else {
+        // Just remove from pendingUsers
+        updatedProject = await projectModel.findByIdAndUpdate(projectId, {
+            $pull: { pendingUsers: userId }
+        }, { new: true })
+    }
+
+    return updatedProject;
 }
 
 export const getProjectById = async ({ projectId }) => {
@@ -438,5 +487,91 @@ export const toggleTaskCompletion = async ({ projectId, taskId, userId }) => {
         { new: true }
     ).populate('users').populate('tasks.assignedTo')
 
-    return updatedProject
+}
+
+// ── Invite Link ──────────────────────────────────────────────────────────────
+
+/**
+ * Generate (or regenerate) an invite token for a project.
+ * Any existing member can do this — it invalidates the previous token.
+ */
+export const generateInviteToken = async ({ projectId, userId }) => {
+    if (!projectId || !mongoose.Types.ObjectId.isValid(projectId)) {
+        throw new Error('Invalid projectId')
+    }
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+        throw new Error('Invalid userId')
+    }
+
+    // Verify the requesting user belongs to the project
+    const project = await projectModel.findOne({ _id: projectId, users: userId })
+    if (!project) {
+        throw new Error('User not authorized for this project')
+    }
+
+    const token = crypto.randomBytes(32).toString('hex')
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+
+    await projectModel.findByIdAndUpdate(projectId, {
+        inviteToken: token,
+        inviteExpiresAt: expiresAt
+    })
+
+    return { token, expiresAt }
+}
+
+/**
+ * Get safe public project info from an invite token (no auth required).
+ * Only returns: name, description, memberCount, createdAt — nothing sensitive.
+ */
+export const getProjectByInviteToken = async ({ token }) => {
+    if (!token) throw new Error('Token is required')
+
+    const project = await projectModel.findOne({ inviteToken: token }).populate('users', 'email name')
+    if (!project) throw new Error('Invalid invite link')
+
+    if (!project.inviteExpiresAt || project.inviteExpiresAt < new Date()) {
+        throw new Error('Invite link has expired')
+    }
+
+    return {
+        _id: project._id,
+        name: project.name,
+        description: project.description,
+        memberCount: project.users.length,
+        members: project.users.map(u => ({ email: u.email, name: u.name })),
+        createdAt: project.createdAt,
+        expiresAt: project.inviteExpiresAt
+    }
+}
+
+/**
+ * Add the authenticated user to a project via invite token.
+ */
+export const joinProjectByToken = async ({ token, userId }) => {
+    if (!token) throw new Error('Token is required')
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+        throw new Error('Invalid userId')
+    }
+
+    const project = await projectModel.findOne({ inviteToken: token })
+    if (!project) throw new Error('Invalid invite link')
+
+    if (!project.inviteExpiresAt || project.inviteExpiresAt < new Date()) {
+        throw new Error('Invite link has expired')
+    }
+
+    // Check if user is already a member
+    const alreadyMember = project.users.some(u => u.toString() === userId.toString())
+    if (alreadyMember) {
+        return { alreadyMember: true, project }
+    }
+
+    const updatedProject = await projectModel.findByIdAndUpdate(
+        project._id,
+        { $addToSet: { users: userId } },
+        { new: true }
+    ).populate('users')
+
+    return { alreadyMember: false, project: updatedProject }
 }

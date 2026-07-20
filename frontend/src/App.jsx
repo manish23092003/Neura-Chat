@@ -13,22 +13,24 @@ const App = () => {
           toastOptions={{
             duration: 3000,
             style: {
-              background: '#1e293b',
-              color: '#f1f5f9',
-              border: '1px solid rgba(234, 88, 12, 0.3)',
-              borderRadius: '0.75rem',
-              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
+              background: 'var(--nc-surface)',
+              color: 'var(--nc-text-primary)',
+              border: '1px solid var(--nc-border)',
+              borderRadius: '10px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
+              fontSize: '14px',
+              fontWeight: 500,
             },
             success: {
               iconTheme: {
-                primary: '#ea580c',
-                secondary: '#f1f5f9',
+                primary: '#22C55E',
+                secondary: '#FFFFFF',
               },
             },
             error: {
               iconTheme: {
-                primary: '#ef4444',
-                secondary: '#f1f5f9',
+                primary: '#EF4444',
+                secondary: '#FFFFFF',
               },
             },
           }}

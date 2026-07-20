@@ -70,7 +70,7 @@ const SyntaxHighlight = ({ line }) => {
     return parts.map((part, index) => {
         let color = 'text-slate-300';
 
-        if (['const', 'return', 'import', 'export', 'default', 'function'].includes(part)) color = 'text-purple-400';
+        if (['const', 'return', 'import', 'export', 'default', 'function'].includes(part)) color = 'text-blue-500';
         else if (['UserProfile', 'div', 'img', 'h3', 'p', 'StatusBadge'].includes(part)) color = 'text-yellow-300';
         else if (['className', 'src', 'alt', 'status'].includes(part)) color = 'text-blue-300';
         else if (part.startsWith('"') || part.startsWith("'")) color = 'text-green-300';

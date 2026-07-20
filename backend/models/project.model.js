@@ -60,11 +60,31 @@ const projectSchema = new mongoose.Schema({
             ref: 'user'
         }
     ],
+    roles: {
+        type: Map,
+        of: String,
+        default: {}
+    },
+    pendingUsers: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'user'
+        }
+    ],
     tasks: [taskSchema],
     fileTree: {
         type: Object,
         default: {}
     },
+    inviteToken: {
+        type: String,
+        default: null,
+        index: true
+    },
+    inviteExpiresAt: {
+        type: Date,
+        default: null
+    }
 
 }, { timestamps: true })
 

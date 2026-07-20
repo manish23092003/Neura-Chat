@@ -40,8 +40,8 @@ const Switch = ({
         <div
           className="absolute inset-0 rounded-full transition-colors duration-150"
           style={{
-            background: checked ? 'var(--nc-primary)' : 'rgba(255,255,255,0.1)',
-            border: `1px solid ${checked ? 'var(--nc-primary)' : 'rgba(255,255,255,0.12)'}`,
+            background: checked ? 'var(--nc-primary)' : 'var(--nc-elevated)',
+            border: `1px solid ${checked ? 'var(--nc-primary)' : 'var(--nc-border)'}`,
           }}
         />
         {/* Thumb */}
@@ -53,7 +53,7 @@ const Switch = ({
             top: thumbOffset,
             left: thumbOffset,
             transform: checked ? `translateX(${translateX}px)` : 'translateX(0)',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
           }}
         />
       </div>

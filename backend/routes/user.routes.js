@@ -21,6 +21,10 @@ router.get('/profile', authMiddleware.authUser, userController.profileController
 
 router.put('/profile', authMiddleware.authUser, userController.updateProfileController);
 
+router.put('/change-password', authMiddleware.authUser, userController.changePasswordController);
+
+router.delete('/profile', authMiddleware.authUser, userController.deleteAccountController);
+
 router.get('/logout', authMiddleware.authUser, userController.logoutController);
 
 

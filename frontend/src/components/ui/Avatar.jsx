@@ -15,14 +15,14 @@ const sizeMap = {
 }
 
 const colorPalette = [
-  ['#7C5CFF', '#5B3FD9'],
-  ['#2563EB', '#1D4ED8'],
-  ['#059669', '#047857'],
-  ['#DC2626', '#B91C1C'],
-  ['#D97706', '#B45309'],
-  ['#7C3AED', '#6D28D9'],
-  ['#0891B2', '#0E7490'],
-  ['#DB2777', '#BE185D'],
+  '#2563EB',
+  '#0891B2',
+  '#059669',
+  '#D97706',
+  '#DC2626',
+  '#7C3AED',
+  '#0E7490',
+  '#BE185D',
 ]
 
 function getColorFromEmail(email = '') {
@@ -42,7 +42,7 @@ const Avatar = ({
   title,
 }) => {
   const { dim, font, radius } = sizeMap[size] || sizeMap.md
-  const [c1, c2] = getColorFromEmail(email || name)
+  const bgColor = getColorFromEmail(email || name)
   const initials = (name || email || 'U').charAt(0).toUpperCase()
   const borderRadius = shape === 'square' ? radius : '50%'
 
@@ -55,7 +55,7 @@ const Avatar = ({
         style={{
           width: dim, height: dim,
           borderRadius,
-          background: src ? 'transparent' : `linear-gradient(135deg, ${c1} 0%, ${c2} 100%)`,
+          background: src ? 'transparent' : bgColor,
           fontSize: font,
           fontWeight: 700,
           color: '#fff',

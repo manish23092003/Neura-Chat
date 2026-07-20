@@ -36,7 +36,7 @@ const Tabs = ({
                 <span
                   className="ml-1 px-1.5 py-0.5 rounded-full text-[11px] font-[700]"
                   style={{
-                    background: isActive ? 'rgba(124,92,255,0.2)' : 'rgba(255,255,255,0.08)',
+                    background: isActive ? 'var(--nc-primary-muted)' : 'var(--nc-elevated)',
                     color: isActive ? 'var(--nc-primary)' : 'var(--nc-text-muted)',
                   }}
                 >
@@ -78,7 +78,7 @@ const Tabs = ({
                 <span
                   className="ml-1 px-1.5 py-0.5 rounded-full text-[11px] font-[700]"
                   style={{
-                    background: 'rgba(255,255,255,0.08)',
+                    background: 'var(--nc-elevated)',
                     color: 'var(--nc-text-muted)',
                   }}
                 >
@@ -111,7 +111,7 @@ const Tabs = ({
               <span
                 className="px-1.5 py-0.5 rounded-full text-[11px] font-[700]"
                 style={{
-                  background: isActive ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.06)',
+                  background: isActive ? 'var(--nc-border)' : 'var(--nc-elevated)',
                   color: isActive ? 'var(--nc-text-primary)' : 'var(--nc-text-muted)',
                 }}
               >

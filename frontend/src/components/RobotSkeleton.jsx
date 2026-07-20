@@ -19,14 +19,14 @@ const RobotSkeleton = ({ state = 'idle', message: customMessage = '', colorTheme
     // Dynamic theme colors definition
     const themes = {
         purple: {
-            primary: '#7C5CFF',
-            secondary: '#A78BFA',
-            gaze: '#C084FC',
-            trimStart: '#A78BFA',
-            trimEnd: '#5B21B6',
-            chassisStart: '#25215A',
-            chassisMid: '#1E194D',
-            chassisEnd: '#0B0925'
+            primary: '#2563EB',
+            secondary: '#3B82F6',
+            gaze: '#60A5FA',
+            trimStart: '#60A5FA',
+            trimEnd: '#1D4ED8',
+            chassisStart: '#1E293B',
+            chassisMid: '#0F172A',
+            chassisEnd: '#020617'
         },
         cyan: {
             primary: '#06B6D4',
@@ -260,7 +260,7 @@ const RobotSkeleton = ({ state = 'idle', message: customMessage = '', colorTheme
                                 )}
 
                                 {state === 'thinking' && (
-                                    <i className="ri-loader-4-line text-[20px] text-purple-300 nc-spin drop-shadow-[0_0_6px_#c084fc]" />
+                                    <i className="ri-loader-4-line text-[20px] text-blue-300 nc-spin drop-shadow-[0_0_6px_#60A5FA]" />
                                 )}
 
                                 {state === 'success' && (
@@ -310,7 +310,7 @@ const RobotSkeleton = ({ state = 'idle', message: customMessage = '', colorTheme
 
                     {/* Glowing Core Reactor Panel (Floating in Torso Center) */}
                     <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none -mt-3.5">
-                        <div className="w-18 h-18 rounded-full flex items-center justify-center bg-black/70 border border-purple-900/50 shadow-inner">
+                        <div className="w-18 h-18 rounded-full flex items-center justify-center bg-black/70 border border-blue-900/50 shadow-inner">
                             {/* Outer Mechanical Aperture Blades */}
                             <motion.div 
                                 className="absolute inset-0 rounded-full border border-dashed"
@@ -321,7 +321,7 @@ const RobotSkeleton = ({ state = 'idle', message: customMessage = '', colorTheme
 
                             {/* Inner Rotor */}
                             <motion.div
-                                className="w-13 h-13 rounded-full flex items-center justify-center relative border border-purple-500/10"
+                                className="w-13 h-13 rounded-full flex items-center justify-center relative border border-blue-500/10"
                                 animate={{ rotate: 360 }}
                                 transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
                             >

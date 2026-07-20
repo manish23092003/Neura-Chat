@@ -11,6 +11,7 @@ import { getWebContainer } from '../config/webContainer'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
 import Avatar from '../components/ui/Avatar'
+import EmptyState from '../components/ui/EmptyState'
 import FilePreview from '../components/FilePreview'
 import FileUpload from '../components/FileUpload'
 import TaskList from '../components/TaskList'
@@ -49,7 +50,7 @@ function SyntaxHighlightedCode(props) {
             {showCopy && (
                 <button
                     onClick={handleCopy}
-                    className="absolute top-1 right-1 px-2 py-1 bg-purple-600 hover:bg-purple-700 text-[var(--nc-text-primary)] text-xs rounded flex items-center gap-1 transition-all z-50 shadow-lg"
+                    className="absolute top-1 right-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-[var(--nc-text-primary)] text-xs rounded flex items-center gap-1 transition-all z-50 shadow-lg"
                     title="Copy code"
                 >
                     <i className={copied ? "ri-check-line" : "ri-file-copy-line"}></i>
@@ -89,6 +90,201 @@ const Project = () => {
     const [uploadingFiles, setUploadingFiles] = useState(false)
     const [activeTab, setActiveTab] = useState('chat') // 'chat', 'tasks', 'files'
     const [terminalOutput, setTerminalOutput] = useState('')
+    const [isGeneratingInvite, setIsGeneratingInvite] = useState(false)
+    const [inviteCopied, setInviteCopied] = useState(false)
+    const [expandedFolders, setExpandedFolders] = useState({})
+    const [isAiThinking, setIsAiThinking] = useState(false)
+
+    useEffect(() => {
+        if (isAiThinking) {
+            setTimeout(() => {
+                if (messageBox.current) {
+                    messageBox.current.scrollTop = messageBox.current.scrollHeight
+                }
+            }, 100)
+        }
+    }, [isAiThinking])
+
+
+
+
+    const getFileByPathString = (tree, pathStr) => {
+        if (!pathStr || !tree) return null;
+        const parts = pathStr.split('/');
+        let current = tree;
+        for (const segment of parts) {
+            if (!current) return null;
+            if (current.directory) {
+                current = current.directory[segment];
+            } else {
+                current = current[segment];
+            }
+        }
+        return current && current.file ? current : null;
+    };
+
+    const normalizeFileTree = (tree) => {
+        if (!tree || typeof tree !== 'object') return tree;
+        const normalized = {};
+        for (const key of Object.keys(tree)) {
+            const node = tree[key];
+            if (!node || typeof node !== 'object') continue;
+
+            if (node.file) {
+                normalized[key] = { file: node.file };
+            } else if (node.type === 'directory' || node.children || node.directory) {
+                const children = node.children || node.directory || {};
+                normalized[key] = {
+                    directory: normalizeFileTree(children)
+                };
+            } else {
+                normalized[key] = {
+                    directory: normalizeFileTree(node)
+                };
+            }
+        }
+        return normalized;
+    };
+
+    const updateFileInTreeByPathString = (tree, pathStr, contents) => {
+        if (!pathStr) return tree;
+        const parts = pathStr.split('/');
+        const newTree = JSON.parse(JSON.stringify(tree));
+        let current = newTree;
+        for (let i = 0; i < parts.length; i++) {
+            const segment = parts[i];
+            if (i === parts.length - 1) {
+                if (current.directory) {
+                    current.directory[segment] = { file: { contents } };
+                } else {
+                    current[segment] = { file: { contents } };
+                }
+            } else {
+                if (current.directory) {
+                    if (!current.directory[segment]) {
+                        current.directory[segment] = { directory: {} };
+                    }
+                    current = current.directory[segment];
+                } else {
+                    if (!current[segment]) {
+                        current[segment] = { directory: {} };
+                    }
+                    current = current[segment];
+                }
+            }
+        }
+        return newTree;
+    };
+
+    const getAllFilesFromTree = (node, path = '', acc = []) => {
+        if (!node) return acc;
+        Object.keys(node).forEach(key => {
+            const childNode = node[key];
+            const currentPath = path ? `${path}/${key}` : key;
+            const isDir = !!(childNode.directory || (!childNode.file && typeof childNode === 'object'));
+            const nextNode = childNode.directory || (isDir ? childNode : null);
+            if (isDir) {
+                if (nextNode) getAllFilesFromTree(nextNode, currentPath, acc);
+            } else {
+                acc.push(currentPath);
+            }
+        });
+        return acc;
+    };
+
+    const toggleFolder = (pathStr) => {
+        setExpandedFolders(prev => ({
+            ...prev,
+            [pathStr]: !prev[pathStr]
+        }))
+    }
+
+    const renderFileTree = (node, path = '', level = 0) => {
+        if (!node) return null;
+        const keys = Object.keys(node);
+        const sortedKeys = [...keys].sort((a, b) => {
+            const aNode = node[a];
+            const bNode = node[b];
+            const aIsDir = !!(aNode.directory || (!aNode.file && typeof aNode === 'object'));
+            const bIsDir = !!(bNode.directory || (!bNode.file && typeof bNode === 'object'));
+            if (aIsDir && !bIsDir) return -1;
+            if (!aIsDir && bIsDir) return 1;
+            return a.localeCompare(b);
+        });
+
+        return sortedKeys.map((key) => {
+            const childNode = node[key];
+            const currentPath = path ? `${path}/${key}` : key;
+            const isDir = !!(childNode.directory || (!childNode.file && typeof childNode === 'object'));
+            const nextNode = childNode.directory || (isDir ? childNode : null);
+
+            if (isDir) {
+                const isExpanded = !!expandedFolders[currentPath];
+                return (
+                    <div key={currentPath}>
+                        <button
+                            onClick={() => toggleFolder(currentPath)}
+                            className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-[6px] text-left transition-all text-[13px] font-[600]"
+                            style={{
+                                color: 'var(--nc-text-secondary)',
+                                paddingLeft: `${8 + level * 10}px`
+                            }}
+                            onMouseEnter={e => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                                e.currentTarget.style.color = 'var(--nc-text-primary)';
+                            }}
+                            onMouseLeave={e => {
+                                e.currentTarget.style.background = 'transparent';
+                                e.currentTarget.style.color = 'var(--nc-text-secondary)';
+                            }}
+                        >
+                            <i className={isExpanded ? "ri-arrow-down-s-line text-[14px]" : "ri-arrow-right-s-line text-[14px]"} style={{ color: 'var(--nc-text-muted)' }} />
+                            <i className={isExpanded ? "ri-folder-open-fill text-[15px]" : "ri-folder-fill text-[15px]"} style={{ color: '#FCD34D' }} />
+                            <span className="truncate">{key}</span>
+                        </button>
+                        {isExpanded && nextNode && (
+                            <div className="mt-0.5">
+                                {renderFileTree(nextNode, currentPath, level + 1)}
+                            </div>
+                        )}
+                    </div>
+                );
+            } else {
+                const isActive = currentFile === currentPath;
+                return (
+                    <button
+                        key={currentPath}
+                        onClick={() => {
+                            setCurrentFile(currentPath);
+                            setOpenFiles(prev => [...new Set([...prev, currentPath])]);
+                        }}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-[6px] text-left transition-all text-[13px] font-[500]"
+                        style={{
+                            paddingLeft: `${24 + level * 10}px`,
+                            background: isActive ? 'var(--nc-primary-muted)' : 'transparent',
+                            color: isActive ? 'var(--nc-primary)' : 'var(--nc-text-secondary)',
+                            border: `1px solid ${isActive ? 'var(--nc-primary-border)' : 'transparent'}`,
+                        }}
+                        onMouseEnter={e => {
+                            if (!isActive) {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                                e.currentTarget.style.color = 'var(--nc-text-primary)';
+                            }
+                        }}
+                        onMouseLeave={e => {
+                            if (!isActive) {
+                                e.currentTarget.style.background = 'transparent';
+                                e.currentTarget.style.color = 'var(--nc-text-secondary)';
+                            }
+                        }}
+                    >
+                        <i className="ri-file-code-line text-[14px] flex-shrink-0" style={{ color: isActive ? 'var(--nc-primary)' : 'var(--nc-text-muted)' }} />
+                        <span className="truncate">{key}</span>
+                    </button>
+                );
+            }
+        });
+    };
 
     const handleUserClick = (id) => {
         setSelectedUserId(prevSelectedUserId => {
@@ -107,7 +303,7 @@ const Project = () => {
             projectId: location.state.project._id,
             users: Array.from(selectedUserId)
         }).then(res => {
-            toast.success('Collaborators added successfully!')
+            toast.success('Invitations sent successfully!')
             setIsModalOpen(false)
             setSelectedUserId(new Set())
             // Refresh project data
@@ -116,8 +312,25 @@ const Project = () => {
             })
         }).catch(err => {
             console.log(err)
-            toast.error('Failed to add collaborators')
+            toast.error('Failed to send invitations')
         })
+    }
+
+    const handleCopyInviteLink = async () => {
+        setIsGeneratingInvite(true)
+        try {
+            const res = await axios.post(`/projects/${project._id}/invite/generate`)
+            const { inviteUrl } = res.data
+            await navigator.clipboard.writeText(inviteUrl)
+            setInviteCopied(true)
+            toast.success('Invite link copied! Valid for 7 days 🔗')
+            setTimeout(() => setInviteCopied(false), 3000)
+        } catch (err) {
+            console.error(err)
+            toast.error('Failed to generate invite link')
+        } finally {
+            setIsGeneratingInvite(false)
+        }
     }
 
     const send = () => {
@@ -129,6 +342,11 @@ const Project = () => {
             sender: user,
             timestamp: new Date().toISOString(),
             reactions: [] // Initialize empty reactions array
+        }
+
+        const prompt = message.trim()
+        if (prompt.includes('@ai')) {
+            setIsAiThinking(true)
         }
 
         sendMessage('project-message', messageData)
@@ -344,22 +562,15 @@ const Project = () => {
     }
 
     const handleCreateFile = () => {
-        const fileName = prompt('Enter file name (e.g. index.js):')
+        const fileName = prompt('Enter file name (e.g. index.js or routes/user.js):')
         if (!fileName) return
         const trimmed = fileName.trim()
         if (!trimmed) return
-        if (fileTree[trimmed]) {
+        if (getFileByPathString(fileTree, trimmed)) {
             toast.error('File already exists!')
             return
         }
-        const updatedFileTree = {
-            ...fileTree,
-            [trimmed]: {
-                file: {
-                    contents: ''
-                }
-            }
-        }
+        const updatedFileTree = updateFileInTreeByPathString(fileTree, trimmed, '')
         setFileTree(updatedFileTree)
         saveFileTree(updatedFileTree)
         setCurrentFile(trimmed)
@@ -427,6 +638,7 @@ const Project = () => {
             }
 
             if (data.sender._id == 'ai') {
+                setIsAiThinking(false)
                 let message
                 try {
                     message = JSON.parse(data.message)
@@ -435,9 +647,10 @@ const Project = () => {
                 }
 
                 if (message.fileTree) {
-                    webContainer?.mount(message.fileTree)
-                    setFileTree(message.fileTree || {})
-                    saveFileTree(message.fileTree)
+                    const normalizedTree = normalizeFileTree(message.fileTree)
+                    webContainer?.mount(normalizedTree)
+                    setFileTree(normalizedTree || {})
+                    saveFileTree(normalizedTree)
                 }
                 setMessages(prevMessages => [...prevMessages, data])
             } else {
@@ -553,9 +766,12 @@ const Project = () => {
         }
     }
 
-    const filteredFiles = Object.keys(fileTree).filter(file =>
-        file.toLowerCase().includes(fileSearchQuery.toLowerCase())
-    )
+    const filteredFiles = (() => {
+        const allFiles = getAllFilesFromTree(fileTree);
+        return allFiles.filter(file =>
+            file.toLowerCase().includes(fileSearchQuery.toLowerCase())
+        );
+    })()
 
     const formatTime = (timestamp) => {
         if (!timestamp) return ''
@@ -630,7 +846,7 @@ const Project = () => {
 
                     <div
                         className="w-7 h-7 rounded-[8px] flex items-center justify-center flex-shrink-0"
-                        style={{ background: 'rgba(124,92,255,0.15)', border: '1px solid rgba(124,92,255,0.25)' }}
+                        style={{ background: 'var(--nc-primary-muted)', border: '1px solid var(--nc-primary-border)' }}
                     >
                         <i className="ri-folder-3-fill text-[14px]" style={{ color: 'var(--nc-primary)' }} />
                     </div>
@@ -645,6 +861,40 @@ const Project = () => {
 
                 {/* Right controls */}
                 <div className="flex items-center gap-2">
+                    {/* Copy Invite Link — premium button */}
+                    <button
+                        onClick={handleCopyInviteLink}
+                        disabled={isGeneratingInvite}
+                        title="Share invite link with your team"
+                        aria-label="Copy invite link"
+                        style={{
+                            position: 'relative', overflow: 'hidden',
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            padding: '0 14px', height: 36, borderRadius: 10,
+                            background: inviteCopied
+                                ? 'rgba(34,197,94,0.1)'
+                                : 'var(--nc-primary-muted)',
+                            border: `1px solid ${inviteCopied ? 'rgba(34,197,94,0.2)' : 'var(--nc-primary-border)'}`,
+                            color: inviteCopied ? '#4ADE80' : 'var(--nc-primary)',
+                            fontSize: 12, fontWeight: 700, letterSpacing: '-0.01em',
+                            cursor: isGeneratingInvite ? 'not-allowed' : 'pointer',
+                            opacity: isGeneratingInvite ? 0.65 : 1,
+                            transition: 'all 0.22s cubic-bezier(0.16,1,0.3,1)',
+                        }}
+                    >
+                        {/* Shine overlay */}
+                        <div style={{
+                            position: 'absolute', top: 0, left: 0, right: 0, height: '50%',
+                            background: 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 100%)',
+                            borderRadius: '10px 10px 0 0', pointerEvents: 'none',
+                        }} />
+                        <i className={`${isGeneratingInvite ? 'ri-loader-4-line nc-spin' : inviteCopied ? 'ri-check-double-line' : 'ri-links-line'}`}
+                            style={{ fontSize: 13, position: 'relative' }} />
+                        <span className="hidden sm:inline" style={{ position: 'relative' }}>
+                            {inviteCopied ? 'Copied!' : 'Invite'}
+                        </span>
+                    </button>
+
                     <Button
                         onClick={() => setIsModalOpen(true)}
                         variant="secondary"
@@ -658,8 +908,8 @@ const Project = () => {
                         onClick={() => setIsSidePanelOpen(!isSidePanelOpen)}
                         className="nc-btn-icon"
                         style={isSidePanelOpen ? {
-                            background: 'rgba(124,92,255,0.12)',
-                            borderColor: 'rgba(124,92,255,0.25)',
+                            background: 'var(--nc-primary-muted)',
+                            borderColor: 'var(--nc-primary-border)',
                             color: 'var(--nc-primary)',
                         } : {}}
                         aria-label="Toggle collaborators panel"
@@ -704,7 +954,7 @@ const Project = () => {
                                     <span
                                         className="px-1.5 py-0.5 rounded-full text-[10px] font-[700]"
                                         style={{
-                                            background: activeTab === tab.id ? 'rgba(124,92,255,0.2)' : 'rgba(255,255,255,0.08)',
+                                            background: activeTab === tab.id ? 'var(--nc-primary-muted)' : 'rgba(255,255,255,0.08)',
                                             color: activeTab === tab.id ? 'var(--nc-primary)' : 'var(--nc-text-muted)',
                                         }}
                                     >
@@ -720,6 +970,15 @@ const Project = () => {
                         <div className="flex flex-col flex-1 overflow-hidden min-h-0">
                             {/* Messages */}
                             <div ref={messageBox} className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+                                {messages.length === 0 && !isAiThinking ? (
+                                    <div className="h-full flex items-center justify-center">
+                                        <EmptyState
+                                            icon="ri-chat-1-line"
+                                            title="No messages yet"
+                                            description="Start the conversation or ask NeuraChat AI for help."
+                                        />
+                                    </div>
+                                ) : (
                                 <AnimatePresence>
                                     {messages.map((msg, index) => {
                                         const isCurrentUser = msg.sender && user && (
@@ -739,7 +998,17 @@ const Project = () => {
                                                 <div className={`max-w-[85%] ${msg.sender._id === 'ai' ? 'max-w-full' : ''}`}>
                                                     {!isCurrentUser && (
                                                         <div className="flex items-center gap-1.5 mb-1.5 pl-1">
-                                                            <Avatar email={msg.sender.email} size="xs" />
+                                                            {msg.sender._id === 'ai' ? (
+                                                                <div style={{
+                                                                    width: 20, height: 20, borderRadius: '6px',
+                                                                    background: 'var(--nc-primary)',
+                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                }}>
+                                                                    <i className="ri-robot-2-fill text-[12px]" style={{ color: 'var(--nc-bg)' }} />
+                                                                </div>
+                                                            ) : (
+                                                                <Avatar email={msg.sender.email} size="xs" />
+                                                            )}
                                                             <span className="text-[11px] font-[600]" style={{ color: 'var(--nc-text-secondary)' }}>
                                                                 {msg.sender._id === 'ai' ? 'NeuraChat AI' : msg.sender.email}
                                                             </span>
@@ -759,12 +1028,12 @@ const Project = () => {
                                                                 background: msg.sender._id === 'ai'
                                                                     ? 'var(--nc-elevated)'
                                                                     : isCurrentUser
-                                                                        ? 'rgba(124,92,255,0.18)'
+                                                                        ? 'var(--nc-primary-muted)'
                                                                         : 'var(--nc-elevated)',
                                                                 border: msg.sender._id === 'ai'
-                                                                    ? '1px solid rgba(124,92,255,0.2)'
+                                                                    ? '1px solid var(--nc-border)'
                                                                     : isCurrentUser
-                                                                        ? '1px solid rgba(124,92,255,0.35)'
+                                                                        ? '1px solid var(--nc-primary-border)'
                                                                         : '1px solid var(--nc-border)',
                                                             }}
                                                         >
@@ -816,8 +1085,8 @@ const Project = () => {
                                                                     onClick={() => handleReaction(msg._id, reaction.emoji)}
                                                                     className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] transition-all"
                                                                     style={{
-                                                                        background: reaction.users.some(u => (u._id || u) === user._id) ? 'rgba(124,92,255,0.2)' : 'rgba(255,255,255,0.06)',
-                                                                        border: reaction.users.some(u => (u._id || u) === user._id) ? '1px solid rgba(124,92,255,0.35)' : '1px solid var(--nc-border)',
+                                                                        background: reaction.users.some(u => (u._id || u) === user._id) ? 'var(--nc-primary-muted)' : 'rgba(255,255,255,0.06)',
+                                                                        border: reaction.users.some(u => (u._id || u) === user._id) ? '1px solid var(--nc-primary-border)' : '1px solid var(--nc-border)',
                                                                         color: 'var(--nc-text-secondary)',
                                                                     }}
                                                                     title={reaction.users.map(u => u.email).join(', ')}
@@ -839,7 +1108,58 @@ const Project = () => {
                                             </div>
                                         </motion.div>
                                     )})}
+
+                                    {/* AI Thinking Loader */}
+                                    {isAiThinking && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -10 }}
+                                            className="flex justify-start pl-1"
+                                        >
+                                            <div className="max-w-[85%]">
+                                                <div className="flex items-center gap-1.5 mb-1.5 pl-1">
+                                                    <div style={{
+                                                        width: 18, height: 18, borderRadius: '50%',
+                                                        background: 'var(--nc-primary)',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    }}>
+                                                        <i className="ri-sparkling-2-fill text-[9px]" style={{ color: 'var(--nc-bg)' }} />
+                                                    </div>
+                                                    <span className="text-[11px] font-[600]" style={{ color: 'var(--nc-text-secondary)' }}>
+                                                        NeuraChat AI
+                                                    </span>
+                                                </div>
+                                                <div
+                                                    className="px-4 py-3 rounded-[14px] rounded-bl-[4px] flex items-center gap-2.5"
+                                                    style={{
+                                                        background: 'var(--nc-elevated)',
+                                                        border: '1px solid var(--nc-border)',
+                                                    }}
+                                                >
+                                                    <div className="flex gap-1.5">
+                                                        {[0, 150, 300].map((delay) => (
+                                                            <span
+                                                                key={delay}
+                                                                className="w-2 h-2 rounded-full animate-bounce"
+                                                                style={{
+                                                                    background: 'var(--nc-primary)',
+                                                                    animationDelay: `${delay}ms`,
+                                                                    animationDuration: '0.8s'
+                                                                }}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-[13px] font-[500] italic" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                                                        Thinking…
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                
                                 </AnimatePresence>
+                                )}
 
                                 {typingUsers.length > 0 && (
                                     <motion.div
@@ -938,7 +1258,9 @@ const Project = () => {
                                             <Avatar email={pu.email} size="md" />
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[13px] font-[600] text-[var(--nc-text-primary)] truncate">{pu.email}</p>
-                                                <p className="text-[11px]" style={{ color: 'var(--nc-text-muted)' }}>Member</p>
+                                                <p className="text-[11px]" style={{ color: 'var(--nc-text-muted)' }}>
+                                                    {idx === 0 ? 'Admin' : (project.roles?.[pu._id] || 'Member')}
+                                                </p>
                                             </div>
                                             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: 'var(--nc-success)' }} />
                                         </div>
@@ -957,15 +1279,6 @@ const Project = () => {
                         <div className="px-4 py-3 shrink-0" style={{ borderBottom: '1px solid var(--nc-border)' }}>
                             <div className="flex items-center justify-between mb-2.5">
                                 <p className="text-[11px] font-[700] tracking-[0.08em] uppercase" style={{ color: 'var(--nc-text-muted)', margin: 0 }}>Files</p>
-                                <button
-                                    onClick={handleCreateFile}
-                                    className="w-5 h-5 rounded hover:bg-white/10 flex items-center justify-center transition-colors text-[13px]"
-                                    style={{ color: 'var(--nc-text-secondary)' }}
-                                    title="New file"
-                                    aria-label="New file"
-                                >
-                                    <i className="ri-add-line" />
-                                </button>
                             </div>
                             <div className="relative">
                                 <i className="ri-search-line absolute left-2.5 top-1/2 -translate-y-1/2 text-[13px] pointer-events-none" style={{ color: 'var(--nc-text-muted)' }} />
@@ -981,29 +1294,38 @@ const Project = () => {
                             </div>
                         </div>
                         <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-                            {filteredFiles.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-10 text-center">
-                                    <i className="ri-file-line text-[24px] mb-2" style={{ color: 'var(--nc-text-muted)' }} />
-                                    <p className="text-[12px] font-[500]" style={{ color: 'var(--nc-text-muted)' }}>No files yet</p>
-                                </div>
+                            {fileSearchQuery ? (
+                                filteredFiles.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                                        <i className="ri-file-line text-[24px] mb-2" style={{ color: 'var(--nc-text-muted)' }} />
+                                        <p className="text-[12px] font-[500]" style={{ color: 'var(--nc-text-muted)' }}>No files matched</p>
+                                    </div>
+                                ) : (
+                                    filteredFiles.map((file, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => { setCurrentFile(file); setOpenFiles([...new Set([...openFiles, file])]) }}
+                                            className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] text-left transition-all text-[13px] font-[500]"
+                                            style={{
+                                                background: currentFile === file ? 'var(--nc-primary-muted)' : 'transparent',
+                                                color: currentFile === file ? 'var(--nc-primary)' : 'var(--nc-text-secondary)',
+                                                border: `1px solid ${currentFile === file ? 'var(--nc-primary-border)' : 'transparent'}`,
+                                            }}
+                                        >
+                                            <i className="ri-file-code-line text-[14px] flex-shrink-0" />
+                                            <span className="truncate">{file}</span>
+                                        </button>
+                                    ))
+                                )
                             ) : (
-                                filteredFiles.map((file, idx) => (
-                                    <button
-                                        key={idx}
-                                        onClick={() => { setCurrentFile(file); setOpenFiles([...new Set([...openFiles, file])]) }}
-                                        className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] text-left transition-all text-[13px] font-[500]"
-                                        style={{
-                                            background: currentFile === file ? 'rgba(124,92,255,0.12)' : 'transparent',
-                                            color: currentFile === file ? 'var(--nc-primary)' : 'var(--nc-text-secondary)',
-                                            border: `1px solid ${currentFile === file ? 'rgba(124,92,255,0.2)' : 'transparent'}`,
-                                        }}
-                                        onMouseEnter={e => { if (currentFile !== file) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'var(--nc-text-primary)' } }}
-                                        onMouseLeave={e => { if (currentFile !== file) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--nc-text-secondary)' } }}
-                                    >
-                                        <i className="ri-file-code-line text-[14px] flex-shrink-0" />
-                                        <span className="truncate">{file}</span>
-                                    </button>
-                                ))
+                                Object.keys(fileTree).length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                                        <i className="ri-file-line text-[24px] mb-2" style={{ color: 'var(--nc-text-muted)' }} />
+                                        <p className="text-[12px] font-[500]" style={{ color: 'var(--nc-text-muted)' }}>No files yet</p>
+                                    </div>
+                                ) : (
+                                    renderFileTree(fileTree)
+                                )
                             )}
                         </div>
                     </div>
@@ -1127,43 +1449,50 @@ const Project = () => {
                         {/* Editor content */}
                         <div className="flex-grow flex flex-col overflow-hidden">
                             <div className="flex-grow overflow-auto relative">
-                                {fileTree[currentFile] ? (
-                                    <div className="h-full code-editor-container">
-                                        <div className="line-numbers">
-                                            {fileTree[currentFile].file.contents.split('\n').map((_, idx) => (
-                                                <div key={idx} className="line-number" />
-                                            ))}
-                                        </div>
-                                        <div className="code-content">
-                                            <pre className="hljs h-full">
-                                                <code
-                                                    className="hljs outline-none"
-                                                    contentEditable
-                                                    suppressContentEditableWarning
-                                                    onBlur={(e) => {
-                                                        const updatedContent = e.target.innerText
-                                                        const ft = { ...fileTree, [currentFile]: { file: { contents: updatedContent } } }
-                                                        setFileTree(ft)
-                                                        saveFileTree(ft)
-                                                    }}
-                                                    dangerouslySetInnerHTML={{ __html: hljs.highlight('javascript', fileTree[currentFile].file.contents).value }}
-                                                    style={{ whiteSpace: 'pre-wrap', paddingBottom: '25rem' }}
-                                                />
-                                            </pre>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="h-full flex items-center justify-center">
-                                        <div className="text-center">
-                                            <div className="w-16 h-16 mx-auto rounded-[16px] flex items-center justify-center mb-4"
-                                                style={{ background: 'rgba(124,92,255,0.1)', border: '1px solid rgba(124,92,255,0.2)' }}>
-                                                <i className="ri-terminal-box-line text-[28px]" style={{ color: 'var(--nc-primary)' }} />
+                                {(() => {
+                                    const openFileObj = getFileByPathString(fileTree, currentFile);
+                                    if (openFileObj) {
+                                        return (
+                                            <div className="h-full code-editor-container">
+                                                <div className="line-numbers">
+                                                    {openFileObj.file.contents.split('\n').map((_, idx) => (
+                                                        <div key={idx} className="line-number" />
+                                                    ))}
+                                                </div>
+                                                <div className="code-content">
+                                                    <pre className="hljs h-full">
+                                                        <code
+                                                            className="hljs outline-none"
+                                                            contentEditable
+                                                            suppressContentEditableWarning
+                                                            onBlur={(e) => {
+                                                                const updatedContent = e.target.innerText
+                                                                const ft = updateFileInTreeByPathString(fileTree, currentFile, updatedContent)
+                                                                setFileTree(ft)
+                                                                saveFileTree(ft)
+                                                            }}
+                                                            dangerouslySetInnerHTML={{ __html: hljs.highlight('javascript', openFileObj.file.contents).value }}
+                                                            style={{ whiteSpace: 'pre-wrap', paddingBottom: '25rem' }}
+                                                        />
+                                                    </pre>
+                                                </div>
                                             </div>
-                                            <h3 className="text-[16px] font-[700] text-[var(--nc-text-primary)] mb-1">Editor Ready</h3>
-                                            <p className="text-[13px]" style={{ color: 'var(--nc-text-secondary)' }}>Select a file from the explorer</p>
-                                        </div>
-                                    </div>
-                                )}
+                                        );
+                                    } else {
+                                        return (
+                                            <div className="h-full flex items-center justify-center">
+                                                <div className="text-center">
+                                                    <div className="w-16 h-16 mx-auto rounded-[16px] flex items-center justify-center mb-4"
+                                                        style={{ background: 'var(--nc-primary-muted)', border: '1px solid var(--nc-primary-border)' }}>
+                                                        <i className="ri-terminal-box-line text-[28px]" style={{ color: 'var(--nc-primary)' }} />
+                                                    </div>
+                                                    <h3 className="text-[16px] font-[700] text-[var(--nc-text-primary)] mb-1">Editor Ready</h3>
+                                                    <p className="text-[13px]" style={{ color: 'var(--nc-text-secondary)' }}>Select a file from the explorer</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                })()}
                             </div>
 
                             {/* Terminal output panel */}
@@ -1237,15 +1566,15 @@ const Project = () => {
             </div>
 
             {/* ── Add Collaborators Modal ── */}
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add collaborators" subtitle="Invite team members to this project" size="md">
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Invite collaborators" subtitle="Send invitation to join this project" size="md">
                 <div className="space-y-2 mb-5 max-h-80 overflow-y-auto">
                     {users.filter(u => !project.users.find(pu => pu._id === u._id)).map(u => (
                         <button
                             key={u._id}
                             className="w-full flex items-center gap-3 p-3 rounded-[12px] text-left transition-all"
                             style={{
-                                background: selectedUserId.has(u._id) ? 'rgba(124,92,255,0.1)' : 'var(--nc-surface)',
-                                border: `1px solid ${selectedUserId.has(u._id) ? 'rgba(124,92,255,0.3)' : 'var(--nc-border)'}`,
+                                background: selectedUserId.has(u._id) ? 'var(--nc-primary-muted)' : 'var(--nc-surface)',
+                                border: `1px solid ${selectedUserId.has(u._id) ? 'var(--nc-primary-border)' : 'var(--nc-border)'}`,
                             }}
                             onClick={() => handleUserClick(u._id)}
                         >
@@ -1259,8 +1588,8 @@ const Project = () => {
                 </div>
                 <div className="flex gap-3">
                     <Button variant="secondary" onClick={() => setIsModalOpen(false)} fullWidth>Cancel</Button>
-                    <Button variant="primary" onClick={addCollaborators} disabled={selectedUserId.size === 0} icon={<i className="ri-user-add-line" />} fullWidth>
-                        Add {selectedUserId.size > 0 ? `(${selectedUserId.size})` : ''}
+                    <Button variant="primary" onClick={addCollaborators} disabled={selectedUserId.size === 0} icon={<i className="ri-mail-send-line" />} fullWidth>
+                        Send Invites {selectedUserId.size > 0 ? `(${selectedUserId.size})` : ''}
                     </Button>
                 </div>
             </Modal>

@@ -96,11 +96,12 @@ const model = genAI.getGenerativeModel({
        
        
        </example>
-    
- IMPORTANT : don't use file name like routes/index.js
-       
-       
-    `
+     IMPORTANT : don't use file name like routes/index.js.
+  IMPORTANT : always output directory structures using the format:
+  "folder_name": { "directory": { "file_name": { "file": { "contents": "..." } } } }
+  Never use "type": "directory" or "children".
+        
+     `
 });
 
 // Extract text content from various file types

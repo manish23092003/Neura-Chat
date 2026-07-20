@@ -137,7 +137,14 @@ const Register = () => {
       setUser(res.data.user)
       setShowConfetti(true)
       toast.success('Account created successfully! 🎉')
-      setTimeout(() => navigate('/home'), 2000)
+      // Check if there is a pending invite to redirect to
+      const pendingInvite = sessionStorage.getItem('pendingInviteToken')
+      if (pendingInvite) {
+        sessionStorage.removeItem('pendingInviteToken')
+        setTimeout(() => navigate(`/invite/${pendingInvite}`), 1000)
+      } else {
+        setTimeout(() => navigate('/home'), 2000)
+      }
     } catch (err) {
       const msg = err.response?.data?.message || err.response?.data?.error || (typeof err.response?.data === 'string' ? err.response.data : null) || 'Registration failed. Please try again.'
       setFormError(msg)
@@ -151,49 +158,38 @@ const Register = () => {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
+      className="min-h-screen flex items-center justify-center p-4"
       style={{ background: 'var(--nc-bg)' }}
     >
-      {/* Background glow */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(ellipse 50% 50% at 50% 30%, rgba(124,92,255,0.07) 0%, transparent 70%)',
-        }}
-      />
-
       <Confetti active={showConfetti} onComplete={() => setShowConfetti(false)} />
 
       <motion.div
-        initial={{ opacity: 0, y: 24, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
         className="relative z-10 w-full"
         style={{ maxWidth: 440 }}
       >
         <div
-          className="rounded-[20px] p-8"
+          className="rounded-[16px] p-8"
           style={{
             background: 'var(--nc-surface)',
             border: '1px solid var(--nc-border)',
-            boxShadow: '0 32px 64px rgba(0,0,0,0.6)',
+            boxShadow: 'var(--shadow-modal)',
           }}
         >
           {/* Header */}
           <div className="flex flex-col items-center mb-7">
             <div
-              className="w-14 h-14 rounded-[16px] flex items-center justify-center mb-5"
-              style={{
-                background: 'linear-gradient(135deg, #7C5CFF 0%, #5B3FD9 100%)',
-                boxShadow: '0 0 32px rgba(124,92,255,0.35)',
-              }}
+              className="w-12 h-12 rounded-[12px] flex items-center justify-center mb-5"
+              style={{ backgroundColor: 'var(--nc-primary)' }}
             >
-              <i className="ri-user-add-line text-white text-[24px]" />
+              <i className="ri-user-add-line text-[22px]" style={{ color: 'var(--nc-bg)' }} />
             </div>
-            <h1 className="text-[28px] font-[700] text-[var(--nc-text-primary)] tracking-tight mb-1">
+            <h1 className="text-[24px] font-[700] text-[var(--nc-text-primary)] tracking-tight mb-1">
               Create your account
             </h1>
-            <p className="text-[15px]" style={{ color: 'var(--nc-text-secondary)' }}>
+            <p className="text-[14px]" style={{ color: 'var(--nc-text-secondary)' }}>
               Join NeuraChat — it's free to start
             </p>
           </div>
@@ -205,11 +201,11 @@ const Register = () => {
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                className="flex items-center gap-3 px-4 py-3 rounded-[12px] mb-5 text-[14px]"
+                className="flex items-center gap-3 px-4 py-3 rounded-[10px] mb-5 text-[13px]"
                 style={{
-                  background: 'rgba(239,68,68,0.1)',
-                  border: '1px solid rgba(239,68,68,0.25)',
-                  color: '#f87171',
+                  background: 'rgba(239,68,68,0.08)',
+                  border: '1px solid rgba(239,68,68,0.15)',
+                  color: '#EF4444',
                 }}
               >
                 <i className="ri-error-warning-line flex-shrink-0" />
@@ -220,7 +216,7 @@ const Register = () => {
 
           <form onSubmit={submitHandler} className="space-y-5" noValidate>
             {/* Email */}
-            <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.08 }}>
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
               <Input
                 label="Email address"
                 type="email"
@@ -238,7 +234,7 @@ const Register = () => {
             </motion.div>
 
             {/* Password */}
-            <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.12 }}>
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
               <div className="flex items-center justify-between mb-2">
                 <label className="nc-label mb-0">Password</label>
                 <button
@@ -265,7 +261,7 @@ const Register = () => {
             </motion.div>
 
             {/* Confirm Password */}
-            <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.16 }}>
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
               <Input
                 label="Confirm password"
                 type="password"
@@ -320,7 +316,7 @@ const Register = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="mt-6 text-center text-[14px]"
+            className="mt-6 text-center text-[13px]"
             style={{ color: 'var(--nc-text-secondary)' }}
           >
             Already have an account?{' '}

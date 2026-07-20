@@ -59,12 +59,12 @@ const FeatureCard = ({ icon, title, description, delay = 0 }) => {
                     rotateY,
                     transformStyle: "preserve-3d",
                 }}
-                className="glass p-6 rounded-xl hover:shadow-2xl hover:shadow-purple-500/30 transition-shadow h-full flex flex-col items-start border border-white/10"
+                className="glass p-6 rounded-xl hover:shadow-2xl hover:shadow-blue-500/20 transition-shadow h-full flex flex-col items-start border border-white/10"
             >
                 {/* Floating Icon */}
                 <motion.div
                     style={{ transform: "translateZ(50px)" }}
-                    className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-600 to-cyan-500 flex items-center justify-center mb-4 shadow-lg"
+                    className="w-12 h-12 rounded-lg bg-[var(--nc-primary)] flex items-center justify-center mb-4 shadow-lg"
                 >
                     <i className={`${icon} text-white text-2xl`}></i>
                 </motion.div>

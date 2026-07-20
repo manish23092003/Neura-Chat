@@ -185,9 +185,8 @@ function AppearanceTab() {
                 onClick={() => theme !== opt.id && toggleTheme()}
                 className="p-5 rounded-[14px] text-left transition-all"
                 style={{
-                  background: isActive ? 'rgba(124,92,255,0.08)' : 'var(--nc-surface)',
-                  border: `1px solid ${isActive ? 'rgba(124,92,255,0.35)' : 'var(--nc-border)'}`,
-                  boxShadow: isActive ? '0 0 24px rgba(124,92,255,0.12)' : 'none',
+                  background: isActive ? 'var(--nc-primary-muted)' : 'var(--nc-surface)',
+                  border: `1px solid ${isActive ? 'var(--nc-primary-border)' : 'var(--nc-border)'}`,
                 }}
               >
                 {/* Color preview */}
@@ -197,7 +196,7 @@ function AppearanceTab() {
                 >
                   <div className="flex gap-1.5">
                     {[40, 60, 80].map((w) => (
-                      <div key={w} className="h-2 rounded-full" style={{ width: w, background: isActive ? 'rgba(124,92,255,0.6)' : 'rgba(100,116,139,0.4)' }} />
+                      <div key={w} className="h-2 rounded-full" style={{ width: w, background: isActive ? 'var(--nc-primary)' : 'rgba(100,116,139,0.4)' }} />
                     ))}
                   </div>
                 </div>
@@ -212,7 +211,7 @@ function AppearanceTab() {
                       className="w-5 h-5 rounded-full flex items-center justify-center"
                       style={{ background: 'var(--nc-primary)' }}
                     >
-                      <i className="ri-check-line text-white text-[11px]" />
+                      <i className="ri-check-line text-[11px]" style={{ color: 'var(--nc-bg)' }} />
                     </div>
                   )}
                 </div>
@@ -255,10 +254,13 @@ function AppearanceTab() {
 
 /* ─── Security Tab ─── */
 function SecurityTab() {
+  const { setUser } = useContext(UserContext)
+  const navigate = useNavigate()
   const [currentPwd, setCurrentPwd] = useState('')
   const [newPwd, setNewPwd] = useState('')
   const [confirmPwd, setConfirmPwd] = useState('')
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const handleChangePassword = async (e) => {
     e.preventDefault()
@@ -274,6 +276,25 @@ function SecurityTab() {
       toast.error(msg)
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm("Are you sure you want to permanently delete your account? This action cannot be undone.");
+    if (!confirmed) return
+
+    setDeleting(true)
+    try {
+      await axios.delete('/users/profile')
+      toast.success('Account deleted successfully')
+      localStorage.removeItem('token')
+      setUser(null)
+      navigate('/login')
+    } catch (err) {
+      const msg = err.response?.data?.message || err.response?.data?.error || (typeof err.response?.data === 'string' ? err.response.data : null) || 'Failed to delete account'
+      toast.error(msg)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -318,37 +339,6 @@ function SecurityTab() {
         </form>
       </SectionCard>
 
-      <SectionCard title="Active sessions" description="Devices currently logged in to your account">
-        <div className="space-y-3">
-          {[
-            { device: 'Chrome on macOS', location: 'Mumbai, IN', time: 'Now', current: true, icon: 'ri-chrome-line' },
-            { device: 'Safari on iPhone', location: 'Mumbai, IN', time: '2 hours ago', current: false, icon: 'ri-smartphone-line' },
-          ].map((session, i) => (
-            <div key={i} className="flex items-center justify-between p-4 rounded-[12px]"
-              style={{ background: 'var(--nc-surface)', border: '1px solid var(--nc-border)' }}>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--nc-border)' }}>
-                  <i className={`${session.icon} text-[18px]`} style={{ color: 'var(--nc-text-secondary)' }} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-[14px] font-[600] text-[var(--nc-text-primary)]">{session.device}</p>
-                    {session.current && <Badge variant="success" size="sm">Current</Badge>}
-                  </div>
-                  <p className="text-[12px]" style={{ color: 'var(--nc-text-secondary)' }}>
-                    {session.location} · {session.time}
-                  </p>
-                </div>
-              </div>
-              {!session.current && (
-                <Button variant="danger" size="xs">Revoke</Button>
-              )}
-            </div>
-          ))}
-        </div>
-      </SectionCard>
-
       {/* Danger zone */}
       <SectionCard title="Danger zone">
         <div className="flex items-center justify-between">
@@ -358,7 +348,7 @@ function SecurityTab() {
               Permanently delete your account and all data
             </p>
           </div>
-          <Button variant="danger" size="sm" icon={<i className="ri-delete-bin-line" />}>
+          <Button variant="danger" size="sm" loading={deleting} onClick={handleDeleteAccount} icon={<i className="ri-delete-bin-line" />}>
             Delete account
           </Button>
         </div>

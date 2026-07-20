@@ -6,8 +6,8 @@ import Avatar from './Avatar'
 import Dropdown from './Dropdown'
 
 /**
- * Header — 72px sticky top navbar
- * Includes: Logo, Search, Notifications, AI Command Bar, Profile Menu
+ * Header — 56px sticky top navbar
+ * Clean, minimal, Linear-inspired
  */
 const Header = ({ onMenuToggle, showMenuButton = false }) => {
   const { user, setUser } = useContext(UserContext)
@@ -58,9 +58,9 @@ const Header = ({ onMenuToggle, showMenuButton = false }) => {
       onClick: () => navigate('/profile'),
     },
     {
-      icon: <i className="ri-home-4-line" />,
-      label: 'Dashboard',
-      onClick: () => navigate('/home'),
+      icon: <i className="ri-rocket-line" />,
+      label: 'Landing page',
+      onClick: () => navigate('/'),
     },
     { divider: true },
     {
@@ -74,22 +74,9 @@ const Header = ({ onMenuToggle, showMenuButton = false }) => {
   return (
     <header
       className={`nc-header ${scrolled ? 'nc-header-scrolled' : ''}`}
-      style={{
-        background: 'var(--nc-surface)',
-        borderBottom: '1px solid var(--nc-border)',
-        position: 'sticky',
-        top: 0,
-        zIndex: 40,
-        height: 72,
-        display: 'flex',
-        alignItems: 'center',
-      }}
       role="banner"
     >
-      <div
-        className="w-full h-full flex items-center px-6 gap-4"
-        style={{ maxWidth: '100%' }}
-      >
+      <div className="w-full h-full flex items-center px-5 gap-4">
         {/* Mobile menu button */}
         {showMenuButton && (
           <button
@@ -97,49 +84,39 @@ const Header = ({ onMenuToggle, showMenuButton = false }) => {
             className="nc-btn-icon lg:hidden"
             aria-label="Toggle sidebar"
           >
-            <i className="ri-menu-line text-[18px]" />
+            <i className="ri-menu-line text-[16px]" />
           </button>
         )}
 
         {/* Logo */}
         <button
           onClick={() => navigate('/home')}
-          className="flex items-center gap-3 flex-shrink-0 group"
+          className="flex items-center gap-2.5 flex-shrink-0 group"
           aria-label="NeuraChat home"
         >
           <div
-            className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0"
+            className="w-8 h-8 rounded-[8px] flex items-center justify-center flex-shrink-0"
             style={{
-              background: 'linear-gradient(135deg, #7C5CFF 0%, #5B3FD9 100%)',
-              boxShadow: '0 0 20px rgba(124,92,255,0.35)',
+              backgroundColor: 'var(--nc-primary)',
             }}
           >
-            <i className="ri-sparkling-2-fill text-white text-[18px]" />
+            <i className="ri-sparkling-2-line text-[16px]" style={{ color: 'var(--nc-bg)' }} />
           </div>
-          <div className="hidden sm:flex flex-col leading-none">
-            <span
-              className="text-[17px] font-[700] tracking-tight"
-              style={{
-                background: 'linear-gradient(135deg, var(--nc-text-primary) 0%, var(--nc-primary) 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
-              NeuraChat
-            </span>
-            <span className="text-[9px] font-[600] tracking-[0.2em] uppercase" style={{ color: 'var(--nc-text-muted)' }}>
-              AI Platform
-            </span>
-          </div>
+          <span
+            className="hidden sm:block text-[15px] font-[700] tracking-tight"
+            style={{ color: 'var(--nc-text-primary)' }}
+          >
+            NeuraChat
+          </span>
         </button>
 
         {/* Divider */}
-        <div className="w-px h-6 flex-shrink-0" style={{ background: 'var(--nc-divider)' }} />
+        <div className="w-px h-5 flex-shrink-0" style={{ background: 'var(--nc-border)' }} />
 
         {/* Global Search */}
-        <div className={`flex-1 max-w-md relative ${searchFocused ? '' : ''}`}>
+        <div className="flex-1 max-w-md relative">
           <i
-            className="ri-search-line absolute left-3.5 top-1/2 -translate-y-1/2 text-[15px]"
+            className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-[14px]"
             style={{ color: 'var(--nc-text-muted)', pointerEvents: 'none' }}
           />
           <input
@@ -149,13 +126,13 @@ const Header = ({ onMenuToggle, showMenuButton = false }) => {
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
             className="nc-search-input"
-            style={{ paddingLeft: 38 }}
+            style={{ paddingLeft: 36 }}
             aria-label="Global search"
           />
           <kbd
-            className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-[600]"
+            className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-[500]"
             style={{
-              background: 'rgba(255,255,255,0.06)',
+              background: 'var(--nc-elevated)',
               color: 'var(--nc-text-muted)',
               border: '1px solid var(--nc-border)',
             }}
@@ -172,7 +149,7 @@ const Header = ({ onMenuToggle, showMenuButton = false }) => {
             <Dropdown
               trigger={
                 <button
-                  className="flex items-center gap-2.5 pl-1 pr-2 py-1 rounded-[12px] transition-colors"
+                  className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-[10px] transition-colors"
                   style={{
                     background: 'var(--nc-elevated)',
                     border: '1px solid var(--nc-border)',
@@ -186,11 +163,11 @@ const Header = ({ onMenuToggle, showMenuButton = false }) => {
                     <span className="text-[13px] font-[600] text-[var(--nc-text-primary)]">
                       {user.name || user.email?.split('@')[0] || 'User'}
                     </span>
-                    <span className="text-[11px] truncate max-w-[100px]" style={{ color: 'var(--nc-text-secondary)' }}>
+                    <span className="text-[11px] truncate max-w-[100px]" style={{ color: 'var(--nc-text-muted)' }}>
                       {user.email}
                     </span>
                   </div>
-                  <i className="ri-arrow-down-s-line text-[14px] hidden md:block" style={{ color: 'var(--nc-text-secondary)' }} />
+                  <i className="ri-arrow-down-s-line text-[14px] hidden md:block" style={{ color: 'var(--nc-text-muted)' }} />
                 </button>
               }
               items={profileItems}

@@ -89,5 +89,38 @@ router.put('/:projectId/tasks/:taskId/toggle',
     projectController.toggleTaskCompletion
 )
 
+// User-to-User invitations routes
+router.get('/invitations',
+    authMiddleWare.authUser,
+    projectController.getPendingInvitations
+)
+
+router.post('/invitations/respond',
+    authMiddleWare.authUser,
+    body('projectId').isString().withMessage('Project ID is required'),
+    body('accept').isBoolean().withMessage('Accept choice must be a boolean'),
+    projectController.respondToInvitation
+)
+
+// ── Invite Link Routes ────────────────────────────────────────────────────────
+
+// Generate (or regenerate) invite token for a project — any project member
+router.post('/:projectId/invite/generate',
+    authMiddleWare.authUser,
+    projectController.generateInvite
+)
+
+// Public preview — no auth needed (visitor sees project name/member count)
+router.get('/invite/:token/preview',
+    projectController.getInvitePreview
+)
+
+// Join via token — must be logged in
+router.post('/invite/join',
+    authMiddleWare.authUser,
+    body('token').isString().withMessage('Token is required'),
+    projectController.joinByInvite
+)
+
 
 export default router;

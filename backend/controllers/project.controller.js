@@ -15,7 +15,7 @@ export const createProject = async (req, res) => {
 
     try {
 
-        const { name, description, tags } = req.body;
+        const { name, description, tags, role } = req.body;
         const loggedInUser = await userModel.findOne({ email: req.user.email });
         const userId = loggedInUser._id;
 
@@ -23,7 +23,8 @@ export const createProject = async (req, res) => {
             name,
             userId,
             description,
-            tags
+            tags,
+            role
         });
 
         res.status(201).json(newProject);
@@ -102,6 +103,7 @@ export const addUserToProject = async (req, res) => {
 
         return res.status(200).json({
             project,
+            message: 'Invitations sent successfully!'
         })
 
     } catch (err) {
@@ -110,6 +112,48 @@ export const addUserToProject = async (req, res) => {
     }
 
 
+}
+
+export const getPendingInvitations = async (req, res) => {
+    try {
+        const loggedInUser = await userModel.findOne({
+            email: req.user.email
+        })
+
+        const invitations = await projectService.getPendingInvitations({
+            userId: loggedInUser._id
+        })
+
+        return res.status(200).json({
+            invitations
+        })
+    } catch (err) {
+        console.log(err)
+        res.status(400).json({ error: err.message })
+    }
+}
+
+export const respondToInvitation = async (req, res) => {
+    try {
+        const { projectId, accept } = req.body
+        const loggedInUser = await userModel.findOne({
+            email: req.user.email
+        })
+
+        const project = await projectService.respondToInvitation({
+            projectId,
+            userId: loggedInUser._id,
+            accept: !!accept
+        })
+
+        return res.status(200).json({
+            project,
+            message: accept ? 'Invitation accepted successfully!' : 'Invitation declined.'
+        })
+    } catch (err) {
+        console.log(err)
+        res.status(400).json({ error: err.message })
+    }
 }
 
 export const getProjectById = async (req, res) => {
@@ -308,6 +352,64 @@ export const deleteTask = async (req, res) => {
     } catch (err) {
         console.log(err);
         res.status(400).json({ error: err.message });
+    }
+}
+
+// ── Invite Link Controllers ───────────────────────────────────────────────────
+
+// POST /projects/:projectId/invite/generate  (auth required)
+export const generateInvite = async (req, res) => {
+    try {
+        const { projectId } = req.params
+        const loggedInUser = await userModel.findOne({ email: req.user.email })
+
+        const { token, expiresAt } = await projectService.generateInviteToken({
+            projectId,
+            userId: loggedInUser._id
+        })
+
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
+        const inviteUrl = `${frontendUrl}/invite/${token}`
+
+        return res.status(200).json({ inviteUrl, token, expiresAt })
+    } catch (err) {
+        console.log(err)
+        res.status(400).json({ error: err.message })
+    }
+}
+
+// GET /projects/invite/:token/preview  (no auth required)
+export const getInvitePreview = async (req, res) => {
+    try {
+        const { token } = req.params
+        const projectInfo = await projectService.getProjectByInviteToken({ token })
+        return res.status(200).json({ project: projectInfo })
+    } catch (err) {
+        console.log(err)
+        const status = err.message === 'Invite link has expired' ? 410 : 404
+        res.status(status).json({ error: err.message })
+    }
+}
+
+// POST /projects/invite/join  (auth required)  body: { token }
+export const joinByInvite = async (req, res) => {
+    try {
+        const { token } = req.body
+        const loggedInUser = await userModel.findOne({ email: req.user.email })
+
+        const result = await projectService.joinProjectByToken({
+            token,
+            userId: loggedInUser._id
+        })
+
+        return res.status(200).json({
+            alreadyMember: result.alreadyMember,
+            project: result.project
+        })
+    } catch (err) {
+        console.log(err)
+        const status = err.message === 'Invite link has expired' ? 410 : 400
+        res.status(status).json({ error: err.message })
     }
 }
 

@@ -6,6 +6,7 @@ import Register from '../screens/Register'
 import Home from '../screens/Home'
 import Project from '../screens/Project'
 import Profile from '../screens/Profile'
+import JoinProject from '../screens/JoinProject'
 import UserAuth from '../auth/UserAuth'
 
 const AppRoutes = () => {
@@ -19,6 +20,7 @@ const AppRoutes = () => {
                 <Route path="/home" element={<UserAuth><Home /></UserAuth>} />
                 <Route path="/project" element={<UserAuth><Project /></UserAuth>} />
                 <Route path="/profile" element={<UserAuth><Profile /></UserAuth>} />
+                <Route path="/invite/:token" element={<JoinProject />} />
             </Routes>
 
         </BrowserRouter>

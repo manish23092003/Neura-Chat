@@ -21,37 +21,30 @@ import Modal from '../components/ui/Modal'
 /* ─────────────────────────────────────────
    Stat Card
 ───────────────────────────────────────── */
-function StatCard({ icon, label, value, trend, color = '#7C5CFF', index = 0 }) {
+function StatCard({ icon, label, value, color = '#2563EB', index = 0 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.06, duration: 0.25 }}
-      whileHover={{ y: -2 }}
-      className="nc-stat-card"
+      transition={{ delay: index * 0.05, duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
+      className="p-5 rounded-[14px] flex items-center gap-4"
+      style={{
+        background: 'var(--nc-surface)',
+        border: '1px solid var(--nc-border)',
+      }}
     >
-      <div className="flex items-start justify-between">
-        <div
-          className="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0"
-          style={{ background: `${color}1A`, border: `1px solid ${color}30` }}
-        >
-          <i className={`${icon} text-[20px]`} style={{ color }} />
-        </div>
-        {trend !== undefined && (
-          <span
-            className="text-[12px] font-[700] px-2 py-1 rounded-full"
-            style={{
-              background: trend >= 0 ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
-              color: trend >= 0 ? '#22C55E' : '#EF4444',
-            }}
-          >
-            {trend >= 0 ? '+' : ''}{trend}%
-          </span>
-        )}
+      <div
+        className="w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0"
+        style={{ 
+          background: `${color}12`, 
+          color: color,
+        }}
+      >
+        <i className={`${icon} text-[20px]`} />
       </div>
-      <div className="mt-4">
-        <p className="text-[32px] font-[700] text-[var(--nc-text-primary)] leading-none tracking-tight">{value}</p>
-        <p className="text-[13px] font-[500] mt-1" style={{ color: 'var(--nc-text-secondary)' }}>{label}</p>
+      <div>
+        <p className="text-[11px] font-[600] tracking-wider uppercase" style={{ color: 'var(--nc-text-muted)' }}>{label}</p>
+        <p className="text-[24px] font-[700] text-[var(--nc-text-primary)] mt-0.5 leading-none tracking-tight">{value}</p>
       </div>
     </motion.div>
   )
@@ -61,7 +54,7 @@ function StatCard({ icon, label, value, trend, color = '#7C5CFF', index = 0 }) {
    Project Card
 ───────────────────────────────────────── */
 const PROJECT_COLORS = [
-  '#7C5CFF', '#2563EB', '#059669', '#D97706', '#DC2626', '#7C3AED', '#0891B2',
+  '#2563EB', '#059669', '#D97706', '#DC2626', '#0891B2', '#7C3AED', '#BE185D',
 ]
 
 function getProjectColor(name = '') {
@@ -70,9 +63,8 @@ function getProjectColor(name = '') {
   return PROJECT_COLORS[Math.abs(hash) % PROJECT_COLORS.length]
 }
 
-function ProjectCard({ project, onOpen, onDelete, viewMode, index }) {
+function ProjectCard({ project, onDelete, viewMode, index }) {
   const navigate = useNavigate()
-  const [menuOpen, setMenuOpen] = useState(false)
   const totalTasks = project.tasks?.length || 0
   const doneTasks = project.tasks?.filter(t => t.completed).length || 0
   const progress = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0
@@ -94,173 +86,195 @@ function ProjectCard({ project, onOpen, onDelete, viewMode, index }) {
   if (viewMode === 'list') {
     return (
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
+        initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0 }}
-        transition={{ delay: index * 0.04 }}
+        transition={{ delay: index * 0.03, ease: [0.25, 1, 0.5, 1] }}
         className="flex items-center gap-4 px-5 py-4 rounded-[14px] cursor-pointer group transition-all"
         style={{
-          background: 'var(--nc-elevated)',
+          background: 'var(--nc-surface)',
           border: '1px solid var(--nc-border)',
         }}
         onClick={() => navigate('/project', { state: { project } })}
         onMouseEnter={e => {
-          e.currentTarget.style.borderColor = `${color}40`
-          e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.4)'
+          e.currentTarget.style.borderColor = 'var(--nc-border-hover)'
+          e.currentTarget.style.boxShadow = 'var(--shadow-card-hover)'
         }}
         onMouseLeave={e => {
-          e.currentTarget.style.borderColor = 'var(--nc-border)'
-          e.currentTarget.style.boxShadow = 'none'
+          e.currentTarget.style.borderColor = ''
+          e.currentTarget.style.boxShadow = ''
         }}
       >
         <div
-          className="w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0"
-          style={{ background: `${color}1A`, border: `1px solid ${color}30` }}
+          className="w-9 h-9 rounded-[8px] flex items-center justify-center flex-shrink-0"
+          style={{ 
+            background: `${color}12`,
+          }}
         >
-          <i className="ri-folder-3-fill text-[18px]" style={{ color }} />
+          <i className="ri-folder-3-fill text-[16px]" style={{ color }} />
         </div>
+        
         <div className="flex-1 min-w-0">
-          <p className="text-[15px] font-[600] text-[var(--nc-text-primary)] truncate">{project.name}</p>
-          {project.description && (
-            <p className="text-[13px] truncate mt-0.5" style={{ color: 'var(--nc-text-secondary)' }}>
+          <p className="text-[14px] font-[600] text-[var(--nc-text-primary)] truncate group-hover:text-[var(--nc-primary)] transition-colors">
+            {project.name}
+          </p>
+          {project.description ? (
+            <p className="text-[12px] truncate mt-0.5" style={{ color: 'var(--nc-text-secondary)' }}>
               {project.description}
+            </p>
+          ) : (
+            <p className="text-[12px] truncate mt-0.5 italic" style={{ color: 'var(--nc-text-muted)' }}>
+              No description
             </p>
           )}
         </div>
+
         <div className="hidden md:flex items-center gap-6 flex-shrink-0">
-          <div className="w-24">
+          <div className="w-28">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-[600]" style={{ color: 'var(--nc-text-muted)' }}>PROGRESS</span>
+              <span className="text-[10px] font-[700]" style={{ color: 'var(--nc-text-secondary)' }}>{progress}%</span>
+            </div>
             <ProgressBar value={progress} size="sm" />
-            <p className="text-[11px] mt-1 font-[600]" style={{ color: 'var(--nc-text-muted)' }}>
-              {doneTasks}/{totalTasks} tasks
-            </p>
           </div>
+
+          <div className="flex items-center gap-1.5 min-w-[70px] justify-center">
+            <i className="ri-checkbox-circle-line text-[14px]" style={{ color: progress === 100 ? 'var(--nc-success)' : 'var(--nc-text-muted)' }} />
+            <span className="text-[12px] font-[600]" style={{ color: 'var(--nc-text-secondary)' }}>
+              {doneTasks}/{totalTasks}
+            </span>
+          </div>
+
           <div className="flex -space-x-2">
             {members.slice(0, 3).map((m, i) => m?.email ? (
-              <Avatar key={i} email={m.email} size="xs" className="ring-2" style={{ '--tw-ring-color': 'var(--nc-elevated)' }} />
+              <Avatar key={i} email={m.email} size="xs" className="ring-2" style={{ '--tw-ring-color': 'var(--nc-surface)' }} />
             ) : null)}
             {members.length > 3 && (
-              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-[700]"
-                style={{ background: 'var(--nc-surface)', border: '2px solid var(--nc-elevated)', color: 'var(--nc-text-secondary)' }}>
+              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-[700] ring-2"
+                style={{ background: 'var(--nc-elevated)', color: 'var(--nc-text-secondary)' }}>
                 +{members.length - 3}
               </div>
             )}
           </div>
+          
           <span className="text-[12px] font-[500] w-20 text-right" style={{ color: 'var(--nc-text-muted)' }}>
             {formatDate(updatedAt)}
           </span>
         </div>
-        <i className="ri-arrow-right-s-line text-[18px] ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ color: 'var(--nc-text-secondary)' }} />
+
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150" onClick={e => e.stopPropagation()}>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(project, e) }}
+            className="nc-btn-icon"
+            style={{ width: 30, height: 30 }}
+            title="Delete project"
+          >
+            <i className="ri-delete-bin-line text-[13px]" />
+          </button>
+        </div>
       </motion.div>
     )
   }
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ delay: index * 0.05 }}
-      className="relative group rounded-[16px] p-6 cursor-pointer transition-all"
+      exit={{ opacity: 0 }}
+      transition={{ delay: index * 0.04, ease: [0.25, 1, 0.5, 1] }}
+      className="relative group rounded-[14px] p-5 cursor-pointer transition-all flex flex-col h-full"
       style={{
-        background: 'var(--nc-elevated)',
+        background: 'var(--nc-surface)',
         border: '1px solid var(--nc-border)',
       }}
       onClick={() => navigate('/project', { state: { project } })}
       onMouseEnter={e => {
-        e.currentTarget.style.borderColor = `${color}40`
+        e.currentTarget.style.borderColor = 'var(--nc-border-hover)'
         e.currentTarget.style.transform = 'translateY(-2px)'
-        e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.5)'
+        e.currentTarget.style.boxShadow = 'var(--shadow-card-hover)'
       }}
       onMouseLeave={e => {
-        e.currentTarget.style.borderColor = 'var(--nc-border)'
-        e.currentTarget.style.transform = 'none'
-        e.currentTarget.style.boxShadow = 'none'
+        e.currentTarget.style.borderColor = ''
+        e.currentTarget.style.transform = ''
+        e.currentTarget.style.boxShadow = ''
       }}
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div
-          className="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0"
-          style={{ background: `${color}1A`, border: `1px solid ${color}30` }}
+          className="w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0"
+          style={{ background: `${color}12` }}
         >
-          <i className="ri-folder-3-fill text-[20px]" style={{ color }} />
+          <i className="ri-folder-3-fill text-[18px]" style={{ color }} />
         </div>
 
         {/* Quick actions */}
         <div
-          className="opacity-0 group-hover:opacity-100 transition-opacity"
+          className="opacity-0 group-hover:opacity-100 transition-opacity duration-150"
           onClick={e => e.stopPropagation()}
         >
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(project, e) }}
-            className="w-8 h-8 rounded-[8px] flex items-center justify-center transition-all"
-            style={{ color: 'var(--nc-text-muted)' }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = 'rgba(239,68,68,0.1)'
-              e.currentTarget.style.color = '#EF4444'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = 'transparent'
-              e.currentTarget.style.color = 'var(--nc-text-muted)'
-            }}
+            className="nc-btn-icon"
+            style={{ width: 30, height: 30 }}
             title="Delete project"
             aria-label="Delete project"
           >
-            <i className="ri-delete-bin-line text-[15px]" />
+            <i className="ri-delete-bin-line text-[13px]" />
           </button>
         </div>
       </div>
 
       {/* Name + description */}
-      <h3 className="text-[16px] font-[600] text-[var(--nc-text-primary)] mb-1 truncate">{project.name}</h3>
-      {project.description && (
-        <p className="text-[13px] nc-truncate-2 mb-4" style={{ color: 'var(--nc-text-secondary)' }}>
+      <h3 className="text-[15px] font-[600] text-[var(--nc-text-primary)] mb-1 truncate group-hover:text-[var(--nc-primary)] transition-colors">
+        {project.name}
+      </h3>
+      {project.description ? (
+        <p className="text-[13px] nc-truncate-2 mb-5 leading-relaxed" style={{ color: 'var(--nc-text-secondary)' }}>
           {project.description}
+        </p>
+      ) : (
+        <p className="text-[13px] italic mb-5 leading-relaxed" style={{ color: 'var(--nc-text-muted)' }}>
+          No description provided.
         </p>
       )}
 
-      {/* Progress */}
-      {totalTasks > 0 && (
+      {/* Progress / Tasks Stats */}
+      <div className="mt-auto">
         <div className="mb-4">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[12px] font-[600]" style={{ color: 'var(--nc-text-secondary)' }}>Progress</span>
-            <span className="text-[12px] font-[700]" style={{ color: 'var(--nc-text-primary)' }}>
-              {doneTasks}/{totalTasks}
+            <span className="text-[11px] font-[600] tracking-wider" style={{ color: 'var(--nc-text-muted)' }}>PROGRESS</span>
+            <span className="text-[12px] font-[700]" style={{ color: 'var(--nc-text-secondary)' }}>
+              {doneTasks}/{totalTasks} Tasks ({progress}%)
             </span>
           </div>
           <ProgressBar value={progress} size="sm" />
         </div>
-      )}
 
-      {/* Footer */}
-      <div className="flex items-center justify-between mt-auto pt-2">
-        {/* Members */}
-        <div className="flex items-center gap-2">
-          <div className="flex -space-x-2">
-            {members.slice(0, 4).map((m, i) => m?.email ? (
-              <div key={i} className="rounded-full" style={{ border: '2px solid var(--nc-elevated)' }}>
-                <Avatar email={m.email} size="xs" />
-              </div>
-            ) : null)}
-            {members.length > 4 && (
-              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-[700]"
-                style={{ background: 'var(--nc-surface)', border: '2px solid var(--nc-elevated)', color: 'var(--nc-text-secondary)' }}>
-                +{members.length - 4}
-              </div>
-            )}
+        {/* Card Footer */}
+        <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: 'var(--nc-border)' }}>
+          {/* Members */}
+          <div className="flex items-center gap-1.5">
+            <div className="flex -space-x-1.5">
+              {members.slice(0, 4).map((m, i) => m?.email ? (
+                <div key={i} className="rounded-full ring-2" style={{ '--tw-ring-color': 'var(--nc-surface)' }}>
+                  <Avatar email={m.email} size="xs" />
+                </div>
+              ) : null)}
+              {members.length > 4 && (
+                <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-[700] ring-2"
+                  style={{ background: 'var(--nc-elevated)', color: 'var(--nc-text-secondary)' }}>
+                  +{members.length - 4}
+                </div>
+              )}
+            </div>
           </div>
-          {members.length > 0 && (
-            <span className="text-[12px] font-[500]" style={{ color: 'var(--nc-text-muted)' }}>
-              {members.length} {members.length === 1 ? 'member' : 'members'}
-            </span>
-          )}
-        </div>
 
-        {/* Updated time */}
-        <span className="text-[12px] font-[500]" style={{ color: 'var(--nc-text-muted)' }}>
-          {formatDate(updatedAt)}
-        </span>
+          {/* Updated time */}
+          <span className="text-[11px] font-[500]" style={{ color: 'var(--nc-text-muted)' }}>
+            {formatDate(updatedAt)}
+          </span>
+        </div>
       </div>
     </motion.div>
   )
@@ -272,17 +286,17 @@ function ProjectCard({ project, onOpen, onDelete, viewMode, index }) {
 function CreateProjectModal({ isOpen, onClose, onCreate }) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [visibility, setVisibility] = useState('private')
-  const [aiEnabled, setAiEnabled] = useState(true)
+  const [role, setRole] = useState('')
   const [creating, setCreating] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!name.trim()) { toast.error('Project name is required'); return }
+    if (!role.trim()) { toast.error('Your role is required'); return }
     setCreating(true)
     try {
-      await onCreate({ name: name.trim(), description: description.trim() })
-      setName(''); setDescription(''); setVisibility('private'); setAiEnabled(true)
+      await onCreate({ name: name.trim(), description: description.trim(), role: role.trim() })
+      setName(''); setDescription(''); setRole('')
       onClose()
     } finally {
       setCreating(false)
@@ -290,7 +304,7 @@ function CreateProjectModal({ isOpen, onClose, onCreate }) {
   }
 
   const handleClose = () => {
-    if (!creating) { setName(''); setDescription(''); onClose() }
+    if (!creating) { setName(''); setDescription(''); setRole(''); onClose() }
   }
 
   return (
@@ -325,54 +339,16 @@ function CreateProjectModal({ isOpen, onClose, onCreate }) {
           />
         </div>
 
-        <Select
-          label="Visibility"
-          value={visibility}
-          onChange={(e) => setVisibility(e.target.value)}
-          icon={<i className="ri-lock-line" />}
-          options={[
-            { value: 'private', label: 'Private — only invited members' },
-            { value: 'team', label: 'Team — everyone in workspace' },
-            { value: 'public', label: 'Public — anyone with link' },
-          ]}
-        />
-
-        {/* AI Toggle */}
-        <div
-          className="flex items-center justify-between p-4 rounded-[12px]"
-          style={{ background: 'var(--nc-surface)', border: '1px solid var(--nc-border)' }}
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0"
-              style={{ background: 'rgba(124,92,255,0.12)', border: '1px solid rgba(124,92,255,0.2)' }}
-            >
-              <i className="ri-sparkling-2-line text-[16px]" style={{ color: 'var(--nc-primary)' }} />
-            </div>
-            <div>
-              <p className="text-[14px] font-[600] text-[var(--nc-text-primary)]">AI Assistance</p>
-              <p className="text-[12px]" style={{ color: 'var(--nc-text-muted)' }}>Auto-suggest tasks and summaries</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setAiEnabled(v => !v)}
-            className="relative flex-shrink-0"
-            style={{ width: 44, height: 24 }}
-            aria-pressed={aiEnabled}
-          >
-            <div
-              className="absolute inset-0 rounded-full transition-colors duration-150"
-              style={{
-                background: aiEnabled ? 'var(--nc-primary)' : 'rgba(255,255,255,0.1)',
-                border: `1px solid ${aiEnabled ? 'var(--nc-primary)' : 'rgba(255,255,255,0.12)'}`,
-              }}
-            />
-            <div
-              className="absolute rounded-full bg-white transition-transform duration-150"
-              style={{ width: 18, height: 18, top: 3, left: 3, transform: aiEnabled ? 'translateX(20px)' : 'translateX(0)', boxShadow: '0 1px 3px rgba(0,0,0,0.4)' }}
-            />
-          </button>
+        <div>
+          <label className="nc-label">Your Role <span className="text-red-500">*</span></label>
+          <Input
+            type="text"
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            placeholder="e.g. Frontend Developer, Project Manager"
+            icon={<i className="ri-user-star-line" />}
+            required
+          />
         </div>
 
         {/* Actions */}
@@ -433,6 +409,7 @@ const Home = () => {
   const [projectName, setProjectName] = useState('')
   const [projectDescription, setProjectDescription] = useState('')
   const [projects, setProjects] = useState([])
+  const [invitations, setInvitations] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState('grid')
@@ -451,10 +428,30 @@ const Home = () => {
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => { fetchProjects() }, [fetchProjects])
+  const fetchInvitations = useCallback(() => {
+    axios.get('/projects/invitations')
+      .then((res) => setInvitations(res.data.invitations || []))
+      .catch(() => console.error('Failed to load invitations'))
+  }, [])
 
-  const createProject = useCallback(async ({ name, description }) => {
-    const res = await axios.post('/projects/create', { name, description })
+  useEffect(() => { 
+    fetchProjects()
+    fetchInvitations()
+  }, [fetchProjects, fetchInvitations])
+
+  const handleRespondInvitation = async (projectId, accept) => {
+    try {
+      const res = await axios.post('/projects/invitations/respond', { projectId, accept })
+      toast.success(res.data.message || (accept ? 'Invitation accepted! 🎉' : 'Invitation declined.'))
+      fetchInvitations()
+      fetchProjects()
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to respond to invitation')
+    }
+  }
+
+  const createProject = useCallback(async ({ name, description, role }) => {
+    const res = await axios.post('/projects/create', { name, description, role })
     toast.success('Project created!')
     fetchProjects()
   }, [fetchProjects])
@@ -516,10 +513,12 @@ const Home = () => {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--nc-bg)' }}>
+    <div className="min-h-screen relative overflow-hidden" style={{ background: 'var(--nc-bg)' }}>
       <Header />
 
-      <main className="max-w-[1280px] mx-auto px-6 py-8">
+      {/* Clean background — no ambient glows */}
+
+      <main className="max-w-[1280px] mx-auto px-6 py-8 relative z-10">
 
         {/* ── Top greeting ── */}
         <motion.div
@@ -547,8 +546,8 @@ const Home = () => {
 
         {/* ── Stats ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard icon="ri-folder-3-line"   label="Total projects"   value={stats.totalProjects}    index={0} color="#7C5CFF" />
-          <StatCard icon="ri-task-line"        label="Active tasks"     value={stats.activeTasks}      index={1} color="#2563EB" />
+          <StatCard icon="ri-folder-3-line"   label="Total projects"   value={stats.totalProjects}    index={0} color="#2563EB" />
+          <StatCard icon="ri-task-line"        label="Active tasks"     value={stats.activeTasks}      index={1} color="#0891B2" />
           <StatCard icon="ri-team-line"        label="Collaborators"    value={stats.totalCollaborators} index={2} color="#059669" />
           <StatCard icon="ri-pie-chart-2-line" label="Completion rate"  value={`${stats.completionRate}%`} index={3} color="#D97706" />
         </div>
@@ -618,6 +617,78 @@ const Home = () => {
             </div>
           </div>
 
+          {/* Pending Invitations list */}
+          {invitations.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8 p-6 rounded-[14px]"
+              style={{
+                background: 'var(--nc-primary-muted)',
+                border: '1px solid var(--nc-primary-border)',
+              }}
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <i className="ri-mail-unread-line text-[20px]" style={{ color: 'var(--nc-primary)' }} />
+                <h3 className="text-[16px] font-[700] text-[var(--nc-text-primary)]" style={{ margin: 0 }}>
+                  Pending Invitations ({invitations.length})
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {invitations.map((inv) => (
+                  <div
+                    key={inv._id}
+                    className="p-4 rounded-[12px] flex flex-col justify-between"
+                    style={{
+                      background: 'var(--nc-surface)',
+                      border: '1px solid var(--nc-border)',
+                    }}
+                  >
+                    <div>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <i className="ri-folder-3-line text-[16px]" style={{ color: 'var(--nc-primary)' }} />
+                        <span className="text-[15px] font-[600] text-[var(--nc-text-primary)] truncate">
+                          {inv.name}
+                        </span>
+                      </div>
+                      {inv.description && (
+                        <p className="text-[12px] nc-truncate-2 mb-3" style={{ color: 'var(--nc-text-secondary)', fontStyle: 'italic' }}>
+                          "{inv.description}"
+                        </p>
+                      )}
+                      <p className="text-[11px] mb-4" style={{ color: 'var(--nc-text-muted)' }}>
+                        Invited by: {inv.users?.map(u => u.email).join(', ') || 'Project Members'}
+                      </p>
+                    </div>
+                    <div className="flex gap-2 mt-auto">
+                      <Button
+                        onClick={() => handleRespondInvitation(inv._id, false)}
+                        variant="secondary"
+                        size="xs"
+                        fullWidth
+                        style={{ height: 32 }}
+                      >
+                        Decline
+                      </Button>
+                      <Button
+                        onClick={() => handleRespondInvitation(inv._id, true)}
+                        variant="primary"
+                        size="xs"
+                        fullWidth
+                        style={{
+                          height: 32,
+                        }}
+                        icon={<i className="ri-check-line" />}
+                      >
+                        Accept
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
           {/* Project list/grid */}
           {loading ? (
             <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-3'}>
@@ -666,17 +737,17 @@ const Home = () => {
 
       {/* Floating create button (mobile) */}
       <motion.button
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-lg lg:hidden z-30"
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center lg:hidden z-30"
         style={{
-          background: 'linear-gradient(135deg, #7C5CFF 0%, #5B3FD9 100%)',
-          boxShadow: '0 8px 24px rgba(124,92,255,0.5)',
+          backgroundColor: 'var(--nc-primary)',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
         }}
         onClick={() => setIsModalOpen(true)}
-        whileHover={{ scale: 1.06 }}
-        whileTap={{ scale: 0.95 }}
+        whileHover={{ scale: 1.04 }}
+        whileTap={{ scale: 0.96 }}
         aria-label="Create new project"
       >
-        <i className="ri-add-line text-[var(--nc-text-primary)] text-[24px]" />
+        <i className="ri-add-line text-[24px]" style={{ color: 'var(--nc-bg)' }} />
       </motion.button>
 
       {/* Modals */}
