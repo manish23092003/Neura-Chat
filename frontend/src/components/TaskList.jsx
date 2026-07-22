@@ -234,19 +234,6 @@ const TaskList = ({ tasks = [], projectUsers = [], onCreateTask, onUpdateTask, o
                             </button>
                         )}
                     </div>
-
-                    {/* Sort dropdown */}
-                    <select
-                        value={sortBy}
-                        onChange={e => setSortBy(e.target.value)}
-                        className="nc-input"
-                        style={{ height: 30, fontSize: 11, paddingLeft: 8, paddingRight: 8, flexShrink: 0, width: 'auto' }}
-                        title="Sort by"
-                    >
-                        <option value="default">Default</option>
-                        <option value="priority">Priority</option>
-                        <option value="status">Status</option>
-                    </select>
                 </div>
 
                 {/* Filter tabs */}

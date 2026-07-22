@@ -487,6 +487,7 @@ export const toggleTaskCompletion = async ({ projectId, taskId, userId }) => {
         { new: true }
     ).populate('users').populate('tasks.assignedTo')
 
+    return updatedProject
 }
 
 // ── Invite Link ──────────────────────────────────────────────────────────────

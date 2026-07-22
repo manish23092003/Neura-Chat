@@ -16,6 +16,8 @@ import FilePreview from '../components/FilePreview'
 import FileUpload from '../components/FileUpload'
 import TaskList from '../components/TaskList'
 import RobotSkeleton from '../components/RobotSkeleton'
+import AiThinkingAnimation from '../components/AiThinkingAnimation'
+import JSZip from 'jszip'
 
 function SyntaxHighlightedCode(props) {
     const ref = useRef(null)
@@ -94,6 +96,11 @@ const Project = () => {
     const [inviteCopied, setInviteCopied] = useState(false)
     const [expandedFolders, setExpandedFolders] = useState({})
     const [isAiThinking, setIsAiThinking] = useState(false)
+
+    const fileTreeRef = useRef(fileTree)
+    useEffect(() => {
+        fileTreeRef.current = fileTree
+    }, [fileTree])
 
     useEffect(() => {
         if (isAiThinking) {
@@ -578,28 +585,121 @@ const Project = () => {
         toast.success(`Created file ${trimmed}`)
     }
 
-    function WriteAiMessage(message) {
-        try {
-            const messageObject = JSON.parse(message)
-            return (
-                <div className='overflow-auto rounded-lg p-3 border' style={{ background: 'var(--nc-bg)', borderColor: 'var(--nc-border)' }}>
-                    <Markdown
-                        children={messageObject.text}
-                        options={{
-                            overrides: {
-                                code: SyntaxHighlightedCode,
-                            },
-                        }}
-                    />
-                </div>
-            )
-        } catch (e) {
-            return (
-                <div className='overflow-auto rounded-lg p-3 border' style={{ background: 'var(--nc-bg)', borderColor: 'var(--nc-border)' }}>
-                    <p>{message}</p>
-                </div>
-            )
+    function parseAiMessage(messageStr) {
+        if (!messageStr || typeof messageStr !== 'string') {
+            return { text: messageStr || '' }
         }
+
+        let cleaned = messageStr.trim()
+        
+        // Remove markdown code block wraps if present
+        if (cleaned.startsWith('```json')) {
+            cleaned = cleaned.substring(7)
+        } else if (cleaned.startsWith('```')) {
+            cleaned = cleaned.substring(3)
+        }
+        if (cleaned.endsWith('```')) {
+            cleaned = cleaned.substring(0, cleaned.length - 3)
+        }
+        cleaned = cleaned.trim()
+
+        try {
+            return JSON.parse(cleaned)
+        } catch (e) {
+            console.warn('Initial AI message JSON parse failed. Attempting syntax repair...', e)
+            try {
+                // Repair common LLM syntax escaping errors (e.g., escaped quotes inside package.json with spaces \ ")
+                let repaired = cleaned.replace(/\\+\s+"/g, '\\"')
+                return JSON.parse(repaired)
+            } catch (e2) {
+                console.error('Failed to parse AI message after repair:', e2)
+                return { text: messageStr }
+            }
+        }
+    }
+
+    function mergeFileTrees(existing, incoming) {
+        if (!existing || typeof existing !== 'object') return incoming || {};
+        if (!incoming || typeof incoming !== 'object') return existing;
+
+        const merged = { ...existing };
+
+        for (const key of Object.keys(incoming)) {
+            const incomingNode = incoming[key];
+            const existingNode = existing[key];
+
+            if (!existingNode) {
+                merged[key] = incomingNode;
+            } else if (incomingNode.file && existingNode.file) {
+                merged[key] = incomingNode;
+            } else if (incomingNode.directory && existingNode.directory) {
+                merged[key] = {
+                    directory: mergeFileTrees(existingNode.directory, incomingNode.directory)
+                };
+            } else {
+                merged[key] = incomingNode;
+            }
+        }
+
+        return merged;
+    }
+
+    const downloadProjectAsZip = () => {
+        const zip = new JSZip();
+
+        // Helper to recursively add files and directories to the zip object
+        const addFolderToZip = (zipObj, folderNode) => {
+            if (!folderNode || typeof folderNode !== 'object') return;
+
+            Object.keys(folderNode).forEach(key => {
+                const node = folderNode[key];
+                if (!node || typeof node !== 'object') return;
+
+                if (node.file) {
+                    zipObj.file(key, node.file.contents || '');
+                } else if (node.directory) {
+                    const folder = zipObj.folder(key);
+                    addFolderToZip(folder, node.directory);
+                } else {
+                    const folder = zipObj.folder(key);
+                    addFolderToZip(folder, node);
+                }
+            });
+        };
+
+        addFolderToZip(zip, fileTree);
+
+        zip.generateAsync({ type: 'blob' }).then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `${project.name || 'project'}-workspace.zip`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            toast.success('Workspace downloaded successfully!');
+        }).catch(err => {
+            console.error('Failed to generate zip file:', err);
+            toast.error('Failed to download project workspace');
+        });
+    };
+
+    function WriteAiMessage(message) {
+        const messageObject = parseAiMessage(message)
+        return (
+            <div className='overflow-auto rounded-lg p-3 border' style={{ background: 'var(--nc-bg)', borderColor: 'var(--nc-border)' }}>
+                <Markdown
+                    children={messageObject.text || ''}
+                    options={{
+                        overrides: {
+                            code: SyntaxHighlightedCode,
+                        },
+                    }}
+                />
+            </div>
+        )
     }
 
     useEffect(() => {
@@ -639,18 +739,14 @@ const Project = () => {
 
             if (data.sender._id == 'ai') {
                 setIsAiThinking(false)
-                let message
-                try {
-                    message = JSON.parse(data.message)
-                } catch (e) {
-                    message = { text: data.message }
-                }
+                const parsedMessage = parseAiMessage(data.message)
 
-                if (message.fileTree) {
-                    const normalizedTree = normalizeFileTree(message.fileTree)
-                    webContainer?.mount(normalizedTree)
-                    setFileTree(normalizedTree || {})
-                    saveFileTree(normalizedTree)
+                if (parsedMessage.fileTree) {
+                    const normalizedTree = normalizeFileTree(parsedMessage.fileTree)
+                    const mergedTree = mergeFileTrees(fileTreeRef.current, normalizedTree)
+                    webContainer?.mount(mergedTree)
+                    setFileTree(mergedTree)
+                    saveFileTree(mergedTree)
                 }
                 setMessages(prevMessages => [...prevMessages, data])
             } else {
@@ -1110,53 +1206,7 @@ const Project = () => {
                                     )})}
 
                                     {/* AI Thinking Loader */}
-                                    {isAiThinking && (
-                                        <motion.div
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: -10 }}
-                                            className="flex justify-start pl-1"
-                                        >
-                                            <div className="max-w-[85%]">
-                                                <div className="flex items-center gap-1.5 mb-1.5 pl-1">
-                                                    <div style={{
-                                                        width: 18, height: 18, borderRadius: '50%',
-                                                        background: 'var(--nc-primary)',
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    }}>
-                                                        <i className="ri-sparkling-2-fill text-[9px]" style={{ color: 'var(--nc-bg)' }} />
-                                                    </div>
-                                                    <span className="text-[11px] font-[600]" style={{ color: 'var(--nc-text-secondary)' }}>
-                                                        NeuraChat AI
-                                                    </span>
-                                                </div>
-                                                <div
-                                                    className="px-4 py-3 rounded-[14px] rounded-bl-[4px] flex items-center gap-2.5"
-                                                    style={{
-                                                        background: 'var(--nc-elevated)',
-                                                        border: '1px solid var(--nc-border)',
-                                                    }}
-                                                >
-                                                    <div className="flex gap-1.5">
-                                                        {[0, 150, 300].map((delay) => (
-                                                            <span
-                                                                key={delay}
-                                                                className="w-2 h-2 rounded-full animate-bounce"
-                                                                style={{
-                                                                    background: 'var(--nc-primary)',
-                                                                    animationDelay: `${delay}ms`,
-                                                                    animationDuration: '0.8s'
-                                                                }}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                    <span className="text-[13px] font-[500] italic" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                                                        Thinking…
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </motion.div>
-                                    )}
+                                    {isAiThinking && <AiThinkingAnimation />}
                                 
                                 </AnimatePresence>
                                 )}
@@ -1279,6 +1329,15 @@ const Project = () => {
                         <div className="px-4 py-3 shrink-0" style={{ borderBottom: '1px solid var(--nc-border)' }}>
                             <div className="flex items-center justify-between mb-2.5">
                                 <p className="text-[11px] font-[700] tracking-[0.08em] uppercase" style={{ color: 'var(--nc-text-muted)', margin: 0 }}>Files</p>
+                                <button
+                                    onClick={downloadProjectAsZip}
+                                    className="flex items-center gap-1 text-[11px] font-[600] text-[var(--nc-primary)] hover:underline cursor-pointer"
+                                    title="Download whole project folder as a ZIP file"
+                                    style={{ background: 'none', border: 'none', padding: 0 }}
+                                >
+                                    <i className="ri-download-cloud-2-line text-[13px]" style={{ color: 'var(--nc-primary)' }} />
+                                    Download ZIP
+                                </button>
                             </div>
                             <div className="relative">
                                 <i className="ri-search-line absolute left-2.5 top-1/2 -translate-y-1/2 text-[13px] pointer-events-none" style={{ color: 'var(--nc-text-muted)' }} />
@@ -1448,7 +1507,7 @@ const Project = () => {
 
                         {/* Editor content */}
                         <div className="flex-grow flex flex-col overflow-hidden">
-                            <div className="flex-grow overflow-auto relative">
+                            <div className="flex-grow overflow-hidden relative">
                                 {(() => {
                                     const openFileObj = getFileByPathString(fileTree, currentFile);
                                     if (openFileObj) {
@@ -1472,7 +1531,7 @@ const Project = () => {
                                                                 saveFileTree(ft)
                                                             }}
                                                             dangerouslySetInnerHTML={{ __html: hljs.highlight('javascript', openFileObj.file.contents).value }}
-                                                            style={{ whiteSpace: 'pre-wrap', paddingBottom: '25rem' }}
+                                                            style={{ whiteSpace: 'pre', paddingBottom: '25rem' }}
                                                         />
                                                     </pre>
                                                 </div>

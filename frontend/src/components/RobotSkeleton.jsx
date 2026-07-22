@@ -157,22 +157,30 @@ const RobotSkeleton = ({ state = 'idle', message: customMessage = '', colorTheme
                         initial={{ opacity: 0, scale: 0.8, y: 10 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.8, y: 10 }}
-                        className="absolute -top-12 left-1/2 -translate-x-1/2 px-4 py-2 rounded-[14px] font-mono text-[11px] font-[600] whitespace-nowrap z-50 text-center"
+                        className="absolute px-4 py-2 rounded-[14px] font-mono text-[11px] font-[600] z-50 text-center"
                         style={{
                             background: '#0B0A1A',
                             color: '#E0E7FF',
                             border: `1.5px solid ${t.primary}`,
                             boxShadow: `0 12px 40px rgba(0,0,0,0.7), 0 0 24px ${t.primary}40`,
-                            backdropFilter: 'blur(16px)'
+                            backdropFilter: 'blur(16px)',
+                            bottom: 'calc(100% + 12px)',
+                            left: '50%',
+                            x: '-50%',
+                            width: '230px',
+                            whiteSpace: 'normal',
+                            wordBreak: 'break-word',
                         }}
                     >
                         {bubbleMessage}
                         <div 
-                            className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 rotate-45"
+                            className="absolute -bottom-1.5 w-2.5 h-2.5"
                             style={{
                                 background: '#0B0A1A',
                                 borderRight: `1.5px solid ${t.primary}`,
-                                borderBottom: `1.5px solid ${t.primary}`
+                                borderBottom: `1.5px solid ${t.primary}`,
+                                left: '50%',
+                                transform: 'translateX(-50%) rotate(45deg)'
                             }}
                         />
                     </motion.div>
