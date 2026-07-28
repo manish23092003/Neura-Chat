@@ -849,6 +849,9 @@ const Project = () => {
             fileTree: ft
         }).then(res => {
             console.log(res.data)
+            if (res.data.project) {
+                setProject(res.data.project)
+            }
         }).catch(err => {
             console.log(err)
         })
@@ -948,7 +951,46 @@ const Project = () => {
                     </div>
 
                     <div>
-                        <h1 className="text-[15px] font-[700] text-[var(--nc-text-primary)] leading-none tracking-tight">{project.name}</h1>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-[15px] font-[700] text-[var(--nc-text-primary)] leading-none tracking-tight">{project.name}</h1>
+                            {project.githubRepoName && (
+                                <a
+                                    href={project.githubRepoUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-[600] transition-colors"
+                                    style={{
+                                        background: project.githubSyncStatus === 'syncing' 
+                                            ? 'rgba(59,130,246,0.1)' 
+                                            : project.githubSyncStatus === 'error' 
+                                            ? 'rgba(239,68,68,0.1)' 
+                                            : 'rgba(255,255,255,0.06)',
+                                        border: `1px solid ${
+                                            project.githubSyncStatus === 'syncing' 
+                                                ? 'rgba(59,130,246,0.2)' 
+                                                : project.githubSyncStatus === 'error' 
+                                                ? 'rgba(239,68,68,0.2)' 
+                                                : 'var(--nc-border)'
+                                        }`,
+                                        color: project.githubSyncStatus === 'syncing' 
+                                            ? '#60A5FA' 
+                                            : project.githubSyncStatus === 'error' 
+                                            ? '#F87171' 
+                                            : '#94A3B8'
+                                    }}
+                                    title={`Repository: ${project.githubRepoName}`}
+                                >
+                                    <i className="ri-github-fill text-[12px]" />
+                                    <span>
+                                        {project.githubSyncStatus === 'syncing' 
+                                            ? 'Syncing…' 
+                                            : project.githubSyncStatus === 'error' 
+                                            ? 'Sync Error' 
+                                            : 'Synced'}
+                                    </span>
+                                </a>
+                            )}
+                        </div>
                         <p className="text-[11px] mt-0.5" style={{ color: 'var(--nc-text-muted)' }}>
                             {project.users?.length || 0} {project.users?.length === 1 ? 'member' : 'members'}
                         </p>
@@ -1309,7 +1351,7 @@ const Project = () => {
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[13px] font-[600] text-[var(--nc-text-primary)] truncate">{pu.email}</p>
                                                 <p className="text-[11px]" style={{ color: 'var(--nc-text-muted)' }}>
-                                                    {idx === 0 ? 'Admin' : (project.roles?.[pu._id] || 'Member')}
+                                                    {project.roles?.[pu._id] || (idx === 0 ? 'Admin' : 'Member')}
                                                 </p>
                                             </div>
                                             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: 'var(--nc-success)' }} />

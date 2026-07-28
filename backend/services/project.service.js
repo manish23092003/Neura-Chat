@@ -1,15 +1,36 @@
 import projectModel from '../models/project.model.js';
 import mongoose from 'mongoose';
 import crypto from 'crypto';
+import userModel from '../models/user.model.js';
+import { createGitHubRepo, syncTreeToGitHub } from './github.service.js';
 
 export const createProject = async ({
-    name, userId, description, tags, role
+    name, userId, description, tags, role, createGitRepo = false, isPrivate = true
 }) => {
     if (!name) {
         throw new Error('Name is required')
     }
     if (!userId) {
         throw new Error('UserId is required')
+    }
+
+    let githubRepoName = null;
+    let githubRepoUrl = null;
+    let githubSyncStatus = null;
+
+    if (createGitRepo) {
+        const user = await userModel.findById(userId);
+        if (user && user.github && user.github.accessToken) {
+            try {
+                const repoData = await createGitHubRepo(user.github.accessToken, name, isPrivate);
+                githubRepoName = repoData.fullName;
+                githubRepoUrl = repoData.url;
+                githubSyncStatus = 'synced';
+            } catch (err) {
+                console.error('Failed to create repository on GitHub:', err.message);
+                githubSyncStatus = 'error';
+            }
+        }
     }
 
     let project;
@@ -24,7 +45,10 @@ export const createProject = async ({
             users: [userId],
             roles,
             description: description || '',
-            tags: tags || []
+            tags: tags || [],
+            githubRepoName,
+            githubRepoUrl,
+            githubSyncStatus
         });
     } catch (error) {
         if (error.code === 11000) {
@@ -145,7 +169,7 @@ export const getPendingInvitations = async ({ userId }) => {
     return invitations;
 }
 
-export const respondToInvitation = async ({ projectId, userId, accept }) => {
+export const respondToInvitation = async ({ projectId, userId, accept, role }) => {
     if (!projectId || !userId) {
         throw new Error("projectId and userId are required")
     }
@@ -164,10 +188,16 @@ export const respondToInvitation = async ({ projectId, userId, accept }) => {
     let updatedProject;
     if (accept) {
         // Move from pendingUsers to users
-        updatedProject = await projectModel.findByIdAndUpdate(projectId, {
+        const updateOps = {
             $pull: { pendingUsers: userId },
             $addToSet: { users: userId }
-        }, { new: true })
+        }
+        if (role) {
+            updateOps.$set = {
+                [`roles.${userId.toString()}`]: role
+            }
+        }
+        updatedProject = await projectModel.findByIdAndUpdate(projectId, updateOps, { new: true })
     } else {
         // Just remove from pendingUsers
         updatedProject = await projectModel.findByIdAndUpdate(projectId, {
@@ -207,13 +237,41 @@ export const updateFileTree = async ({ projectId, fileTree }) => {
         throw new Error("fileTree is required")
     }
 
+    // Load existing project to get the old file tree
+    const existingProject = await projectModel.findById(projectId);
+    const oldFileTree = existingProject ? (existingProject.fileTree || {}) : {};
+
     const project = await projectModel.findOneAndUpdate({
         _id: projectId
     }, {
         fileTree
     }, {
         new: true
-    })
+    });
+
+    // If linked to GitHub, perform background sync
+    if (project.githubRepoName) {
+        const projectUsers = await userModel.find({ _id: { $in: project.users } });
+        const userWithGit = projectUsers.find(u => u.github && u.github.accessToken);
+        
+        if (userWithGit) {
+            const accessToken = userWithGit.github.accessToken;
+            const [owner, repo] = project.githubRepoName.split('/');
+            
+            // Set status to syncing in DB
+            await projectModel.findByIdAndUpdate(projectId, { githubSyncStatus: 'syncing' });
+            
+            // Run background task
+            syncTreeToGitHub(accessToken, owner, repo, oldFileTree, fileTree)
+                .then(async () => {
+                    await projectModel.findByIdAndUpdate(projectId, { githubSyncStatus: 'synced' });
+                })
+                .catch(async (err) => {
+                    console.error('Background GitHub sync failed:', err);
+                    await projectModel.findByIdAndUpdate(projectId, { githubSyncStatus: 'error' });
+                });
+        }
+    }
 
     return project;
 }
@@ -549,7 +607,7 @@ export const getProjectByInviteToken = async ({ token }) => {
 /**
  * Add the authenticated user to a project via invite token.
  */
-export const joinProjectByToken = async ({ token, userId }) => {
+export const joinProjectByToken = async ({ token, userId, role }) => {
     if (!token) throw new Error('Token is required')
     if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
         throw new Error('Invalid userId')
@@ -568,9 +626,18 @@ export const joinProjectByToken = async ({ token, userId }) => {
         return { alreadyMember: true, project }
     }
 
+    const updateOps = {
+        $addToSet: { users: userId }
+    }
+    if (role) {
+        updateOps.$set = {
+            [`roles.${userId.toString()}`]: role
+        }
+    }
+
     const updatedProject = await projectModel.findByIdAndUpdate(
         project._id,
-        { $addToSet: { users: userId } },
+        updateOps,
         { new: true }
     ).populate('users')
 

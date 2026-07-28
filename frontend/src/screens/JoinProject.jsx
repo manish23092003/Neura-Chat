@@ -5,6 +5,7 @@ import axios from '../config/axios'
 import { UserContext } from '../context/user.context'
 import Avatar from '../components/ui/Avatar'
 import Button from '../components/ui/Button'
+import Input from '../components/ui/Input'
 
 function fmtDate(d) {
     if (!d) return ''
@@ -25,6 +26,7 @@ const JoinProject = () => {
     const [project, setProject] = useState(null)
     const [errorMsg, setErrorMsg] = useState('')
     const [joining, setJoining] = useState(false)
+    const [role, setRole] = useState('')
 
     useEffect(() => {
         if (!token) { setStatus('invalid'); return }
@@ -58,9 +60,12 @@ const JoinProject = () => {
             navigate(`/login?redirect=/invite/${token}`)
             return
         }
+        if (!role.trim()) {
+            return
+        }
         setJoining(true)
         try {
-            const res = await axios.post('/projects/invite/join', { token })
+            const res = await axios.post('/projects/invite/join', { token, role: role.trim() })
             setStatus(res.data.alreadyMember ? 'already' : 'joined')
             if (!res.data.alreadyMember) setTimeout(() => navigate('/home'), 2400)
         } catch (err) {
@@ -191,7 +196,7 @@ const JoinProject = () => {
 
                             <div className="h-px w-full my-6" style={{ background: 'var(--nc-border)' }} />
 
-                            <div className="flex items-center gap-3 p-3 rounded-[12px] mb-6" style={{ background: 'var(--nc-elevated)', border: '1px solid var(--nc-border)' }}>
+                             <div className="flex items-center gap-3 p-3 rounded-[12px] mb-4" style={{ background: 'var(--nc-elevated)', border: '1px solid var(--nc-border)' }}>
                                 <Avatar email={user.email} size="sm" />
                                 <div className="flex-1 min-w-0">
                                     <p className="text-[10px] font-[600] uppercase" style={{ color: 'var(--nc-text-muted)' }}>Joining as</p>
@@ -200,8 +205,20 @@ const JoinProject = () => {
                                 <i className="ri-check-line text-[16px] text-green-500" />
                             </div>
 
+                            <div className="mb-6 text-left">
+                                <label className="nc-label block text-left mb-1.5">Your Role in Project <span className="text-red-500">*</span></label>
+                                <Input
+                                    type="text"
+                                    value={role}
+                                    onChange={(e) => setRole(e.target.value)}
+                                    placeholder="e.g. Frontend Developer, QA Engineer"
+                                    icon={<i className="ri-user-star-line" />}
+                                    required
+                                />
+                            </div>
+
                             <div className="space-y-3">
-                                <Button onClick={handleJoin} loading={joining} disabled={joining} fullWidth icon={!joining && <i className="ri-user-add-line" />}>
+                                <Button onClick={handleJoin} loading={joining} disabled={joining || !role.trim()} fullWidth icon={!joining && <i className="ri-user-add-line" />}>
                                     {joining ? 'Joining…' : 'Join Project'}
                                 </Button>
                                 <Button variant="secondary" onClick={() => navigate('/')} fullWidth>

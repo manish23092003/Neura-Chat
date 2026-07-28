@@ -1,4 +1,4 @@
-import React, { useContext, useState, useCallback } from 'react'
+import React, { useContext, useState, useCallback, useEffect } from 'react'
 import { UserContext } from '../context/user.context'
 import { useTheme } from '../context/theme.context'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -357,6 +357,119 @@ function SecurityTab() {
   )
 }
 
+/* ─── Integrations Tab ─── */
+function IntegrationsTab({ user, setUser }) {
+  const [token, setToken] = useState('')
+  const [linking, setLinking] = useState(false)
+
+  const handleOAuth = () => {
+    const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID;
+    if (!clientId) {
+      toast.error('GitHub OAuth Client ID is not configured in .env. Please use the Personal Access Token option below.');
+      return;
+    }
+    const jwt = localStorage.getItem('token');
+    const authorizeUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo,user&state=${jwt}`;
+    window.location.href = authorizeUrl;
+  }
+
+  const handleLinkToken = async (e) => {
+    e.preventDefault();
+    if (!token.trim()) {
+      toast.error('Please enter a GitHub Personal Access Token');
+      return;
+    }
+    setLinking(true);
+    try {
+      const res = await axios.post('/github/link-token', { token: token.trim() });
+      toast.success(res.data.message || 'GitHub linked successfully!');
+      
+      // Update user state
+      const profileRes = await axios.get('/users/profile');
+      setUser(profileRes.data.user);
+      setToken('');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to verify and link GitHub token');
+    } finally {
+      setLinking(false);
+    }
+  }
+
+  const handleDisconnect = async () => {
+    const confirmed = window.confirm("Are you sure you want to disconnect your GitHub account?");
+    if (!confirmed) return;
+
+    try {
+      await axios.post('/github/disconnect');
+      toast.success('GitHub account disconnected successfully.');
+      
+      // Update user state
+      const profileRes = await axios.get('/users/profile');
+      setUser(profileRes.data.user);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to disconnect GitHub');
+    }
+  }
+
+  const isConnected = !!user?.github?.accessToken;
+
+  return (
+    <div className="space-y-5">
+      <SectionCard title="GitHub Integration" description="Connect your GitHub account to enable automatic repository creation and file synchronization.">
+        {isConnected ? (
+          <div className="flex items-center justify-between p-4 rounded-[12px]" style={{ background: 'var(--nc-surface)', border: '1px solid var(--nc-border)' }}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-[10px] flex items-center justify-center text-[20px]" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--nc-text-primary)' }}>
+                <i className="ri-github-fill" />
+              </div>
+              <div>
+                <p className="text-[14px] font-[600] text-[var(--nc-text-primary)]">Connected to GitHub</p>
+                <p className="text-[12px]" style={{ color: 'var(--nc-text-secondary)' }}>Logged in as <span className="font-[600]" style={{ color: 'var(--nc-primary)' }}>@{user?.github?.username}</span></p>
+              </div>
+            </div>
+            <Button variant="danger" size="sm" onClick={handleDisconnect} icon={<i className="ri-logout-box-r-line" />}>
+              Disconnect
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <div>
+              <p className="text-[14px] font-[600] text-[var(--nc-text-primary)] mb-2">Option 1: Connect via GitHub OAuth</p>
+              <p className="text-[12px] mb-4" style={{ color: 'var(--nc-text-secondary)' }}>
+                Grant permission securely using GitHub's official authentication page.
+              </p>
+              <Button onClick={handleOAuth} icon={<i className="ri-github-fill" />}>
+                Connect GitHub Account
+              </Button>
+            </div>
+
+            <div className="h-px w-full" style={{ background: 'var(--nc-border)' }} />
+
+            <div>
+              <p className="text-[14px] font-[600] text-[var(--nc-text-primary)] mb-2">Option 2: Connect via Personal Access Token</p>
+              <p className="text-[12px] mb-4" style={{ color: 'var(--nc-text-secondary)' }}>
+                Generate a GitHub Token with <code className="px-1.5 py-0.5 rounded text-[11px]" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--nc-primary)' }}>repo</code> and <code className="px-1.5 py-0.5 rounded text-[11px]" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--nc-primary)' }}>user</code> scopes and paste it here.
+              </p>
+              <form onSubmit={handleLinkToken} className="space-y-4">
+                <Input
+                  type="password"
+                  value={token}
+                  onChange={e => setToken(e.target.value)}
+                  placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                  icon={<i className="ri-key-line" />}
+                />
+                <Button type="submit" variant="secondary" loading={linking} icon={<i className="ri-link" />}>
+                  Verify & Link Token
+                </Button>
+              </form>
+            </div>
+          </div>
+        )}
+      </SectionCard>
+    </div>
+  )
+}
+
 /* ─────────────────────────────────────────
    PROFILE SCREEN
 ───────────────────────────────────────── */
@@ -364,6 +477,23 @@ const Profile = () => {
   const { user, setUser } = useContext(UserContext)
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('profile')
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('success') === 'github_connected') {
+      toast.success('GitHub account connected successfully!')
+      // Fetch fresh user profile
+      axios.get('/users/profile')
+        .then(res => {
+          setUser(res.data.user)
+          // Clean URL params
+          window.history.replaceState({}, document.title, window.location.pathname)
+        })
+    } else if (params.get('error')) {
+      toast.error(`Failed to connect GitHub: ${params.get('error').replace(/_/g, ' ')}`)
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
+  }, [setUser])
 
   const handleSave = useCallback(async (data) => {
     try {
@@ -380,6 +510,7 @@ const Profile = () => {
     { id: 'profile',       label: 'Profile',       icon: 'ri-user-3-line' },
     { id: 'appearance',    label: 'Appearance',     icon: 'ri-palette-line' },
     { id: 'security',      label: 'Security',       icon: 'ri-shield-keyhole-line' },
+    { id: 'integrations',  label: 'Integrations',   icon: 'ri-github-fill' },
   ]
 
   return (
@@ -428,6 +559,7 @@ const Profile = () => {
             {activeTab === 'profile' && <ProfileTab user={user} onSave={handleSave} />}
             {activeTab === 'appearance' && <AppearanceTab />}
             {activeTab === 'security' && <SecurityTab />}
+            {activeTab === 'integrations' && <IntegrationsTab user={user} setUser={setUser} />}
           </motion.div>
         </AnimatePresence>
       </main>

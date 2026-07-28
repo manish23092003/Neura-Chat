@@ -15,7 +15,7 @@ export const createProject = async (req, res) => {
 
     try {
 
-        const { name, description, tags, role } = req.body;
+        const { name, description, tags, role, createGitRepo, isPrivate } = req.body;
         const loggedInUser = await userModel.findOne({ email: req.user.email });
         const userId = loggedInUser._id;
 
@@ -24,7 +24,9 @@ export const createProject = async (req, res) => {
             userId,
             description,
             tags,
-            role
+            role,
+            createGitRepo: !!createGitRepo,
+            isPrivate: isPrivate !== false
         });
 
         res.status(201).json(newProject);
@@ -135,7 +137,7 @@ export const getPendingInvitations = async (req, res) => {
 
 export const respondToInvitation = async (req, res) => {
     try {
-        const { projectId, accept } = req.body
+        const { projectId, accept, role } = req.body
         const loggedInUser = await userModel.findOne({
             email: req.user.email
         })
@@ -143,7 +145,8 @@ export const respondToInvitation = async (req, res) => {
         const project = await projectService.respondToInvitation({
             projectId,
             userId: loggedInUser._id,
-            accept: !!accept
+            accept: !!accept,
+            role
         })
 
         return res.status(200).json({
@@ -394,12 +397,13 @@ export const getInvitePreview = async (req, res) => {
 // POST /projects/invite/join  (auth required)  body: { token }
 export const joinByInvite = async (req, res) => {
     try {
-        const { token } = req.body
+        const { token, role } = req.body
         const loggedInUser = await userModel.findOne({ email: req.user.email })
 
         const result = await projectService.joinProjectByToken({
             token,
-            userId: loggedInUser._id
+            userId: loggedInUser._id,
+            role
         })
 
         return res.status(200).json({

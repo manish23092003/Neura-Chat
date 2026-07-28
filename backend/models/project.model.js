@@ -84,6 +84,19 @@ const projectSchema = new mongoose.Schema({
     inviteExpiresAt: {
         type: Date,
         default: null
+    },
+    githubRepoName: {
+        type: String,
+        default: null
+    },
+    githubRepoUrl: {
+        type: String,
+        default: null
+    },
+    githubSyncStatus: {
+        type: String,
+        enum: ['synced', 'syncing', 'error', null],
+        default: null
     }
 
 }, { timestamps: true })

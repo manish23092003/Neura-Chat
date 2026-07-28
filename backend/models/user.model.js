@@ -36,7 +36,13 @@ const userSchema = new mongoose.Schema({
     avatar: {
         type: String,
         default: ''
-    }})
+    },
+    github: {
+        accessToken: { type: String, default: null },
+        username: { type: String, default: null },
+        id: { type: String, default: null }
+    }
+})
 
 
 userSchema.statics.hashPassword = async function (password) {

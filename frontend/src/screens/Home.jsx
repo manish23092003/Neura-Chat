@@ -17,6 +17,7 @@ import Select from '../components/ui/Select'
 import EmptyState from '../components/ui/EmptyState'
 import { CardSkeleton } from '../components/ui/LoadingSkeleton'
 import Modal from '../components/ui/Modal'
+import Switch from '../components/ui/Switch'
 
 /* ─────────────────────────────────────────
    Stat Card
@@ -284,19 +285,28 @@ function ProjectCard({ project, onDelete, viewMode, index }) {
    Create Project Modal
 ───────────────────────────────────────── */
 function CreateProjectModal({ isOpen, onClose, onCreate }) {
+  const { user } = useContext(UserContext)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [role, setRole] = useState('')
+  const [createGitRepo, setCreateGitRepo] = useState(false)
+  const [isPrivate, setIsPrivate] = useState(true)
   const [creating, setCreating] = useState(false)
-
+ 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!name.trim()) { toast.error('Project name is required'); return }
     if (!role.trim()) { toast.error('Your role is required'); return }
     setCreating(true)
     try {
-      await onCreate({ name: name.trim(), description: description.trim(), role: role.trim() })
-      setName(''); setDescription(''); setRole('')
+      await onCreate({
+        name: name.trim(),
+        description: description.trim(),
+        role: role.trim(),
+        createGitRepo,
+        isPrivate
+      })
+      setName(''); setDescription(''); setRole(''); setCreateGitRepo(false); setIsPrivate(true);
       onClose()
     } finally {
       setCreating(false)
@@ -304,7 +314,14 @@ function CreateProjectModal({ isOpen, onClose, onCreate }) {
   }
 
   const handleClose = () => {
-    if (!creating) { setName(''); setDescription(''); setRole(''); onClose() }
+    if (!creating) {
+      setName('');
+      setDescription('');
+      setRole('');
+      setCreateGitRepo(false);
+      setIsPrivate(true);
+      onClose()
+    }
   }
 
   return (
@@ -350,6 +367,32 @@ function CreateProjectModal({ isOpen, onClose, onCreate }) {
             required
           />
         </div>
+
+        {user?.github?.accessToken ? (
+          <div className="p-4 rounded-[12px] space-y-3" style={{ background: 'var(--nc-elevated)', border: '1px solid var(--nc-border)' }}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <i className="ri-github-fill text-[18px]" style={{ color: 'var(--nc-primary)' }} />
+                <span className="text-[13px] font-[600] text-[var(--nc-text-primary)]">Create GitHub Repository</span>
+              </div>
+              <Switch checked={createGitRepo} onChange={setCreateGitRepo} size="sm" />
+            </div>
+            
+            {createGitRepo && (
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[12px]" style={{ color: 'var(--nc-text-secondary)' }}>Private repository</span>
+                <Switch checked={isPrivate} onChange={setIsPrivate} size="sm" />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="p-3 rounded-[12px] flex items-center gap-2 text-[12px]" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--nc-border)', color: 'var(--nc-text-secondary)' }}>
+            <i className="ri-information-line text-[16px] text-blue-500" />
+            <span>
+              Want to auto-create a GitHub repository? Connect your account under settings.
+            </span>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex gap-3 pt-2">
@@ -441,7 +484,17 @@ const Home = () => {
 
   const handleRespondInvitation = async (projectId, accept) => {
     try {
-      const res = await axios.post('/projects/invitations/respond', { projectId, accept })
+      let role = ''
+      if (accept) {
+        const input = window.prompt("What will be your role in this project? (e.g. Frontend Developer, Designer):")
+        if (input === null) return // User cancelled
+        if (!input.trim()) {
+          toast.error("Role is required to accept the invitation")
+          return
+        }
+        role = input.trim()
+      }
+      const res = await axios.post('/projects/invitations/respond', { projectId, accept, role })
       toast.success(res.data.message || (accept ? 'Invitation accepted! 🎉' : 'Invitation declined.'))
       fetchInvitations()
       fetchProjects()
@@ -450,8 +503,8 @@ const Home = () => {
     }
   }
 
-  const createProject = useCallback(async ({ name, description, role }) => {
-    const res = await axios.post('/projects/create', { name, description, role })
+  const createProject = useCallback(async ({ name, description, role, createGitRepo, isPrivate }) => {
+    const res = await axios.post('/projects/create', { name, description, role, createGitRepo, isPrivate })
     toast.success('Project created!')
     fetchProjects()
   }, [fetchProjects])
