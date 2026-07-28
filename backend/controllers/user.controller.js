@@ -68,11 +68,14 @@ export const loginController = async (req, res) => {
 }
 
 export const profileController = async (req, res) => {
-
-    res.status(200).json({
-        user: req.user
-    });
-
+    try {
+        const user = await userModel.findOne({ email: req.user.email });
+        res.status(200).json({
+            user
+        });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
 }
 
 export const logoutController = async (req, res) => {
