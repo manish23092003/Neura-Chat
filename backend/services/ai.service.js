@@ -105,41 +105,66 @@ const model = genAI.getGenerativeModel({
 });
 
 // Extract text content from various file types
-export const extractFileContent = async (filePath) => {
+export const extractFileContent = async (filePathOrBuffer, originalName = null, mimetype = null) => {
     try {
-        const ext = path.extname(filePath).toLowerCase()
-        const fileName = path.basename(filePath)
+        let ext, fileName, content;
 
-        // Text-based files
-        const textExtensions = ['.txt', '.md', '.json', '.js', '.jsx', '.ts', '.tsx',
-            '.css', '.html', '.xml', '.csv', '.log', '.py',
-            '.java', '.c', '.cpp', '.h', '.go', '.rs', '.php']
+        if (Buffer.isBuffer(filePathOrBuffer)) {
+            if (!originalName) {
+                throw new Error("originalName is required when passing a buffer");
+            }
+            ext = path.extname(originalName).toLowerCase();
+            fileName = originalName;
 
-        if (textExtensions.includes(ext)) {
-            const content = fs.readFileSync(filePath, 'utf-8')
-            return {
-                fileName,
-                content: content.substring(0, 50000), // Limit to 50k chars
-                type: 'text'
+            // Text-based files
+            const textExtensions = ['.txt', '.md', '.json', '.js', '.jsx', '.ts', '.tsx',
+                '.css', '.html', '.xml', '.csv', '.log', '.py',
+                '.java', '.c', '.cpp', '.h', '.go', '.rs', '.php'];
+
+            if (textExtensions.includes(ext) || (mimetype && mimetype.startsWith('text/'))) {
+                content = filePathOrBuffer.toString('utf-8');
+            } else {
+                return {
+                    fileName,
+                    content: null,
+                    type: 'unsupported',
+                    message: `File type ${ext} is not supported for AI analysis. Supported types: text files and code files.`
+                };
+            }
+        } else {
+            ext = path.extname(filePathOrBuffer).toLowerCase();
+            fileName = path.basename(filePathOrBuffer);
+
+            const textExtensions = ['.txt', '.md', '.json', '.js', '.jsx', '.ts', '.tsx',
+                '.css', '.html', '.xml', '.csv', '.log', '.py',
+                '.java', '.c', '.cpp', '.h', '.go', '.rs', '.php'];
+
+            if (textExtensions.includes(ext)) {
+                content = fs.readFileSync(filePathOrBuffer, 'utf-8');
+            } else {
+                return {
+                    fileName,
+                    content: null,
+                    type: 'unsupported',
+                    message: `File type ${ext} is not supported for AI analysis. Supported types: text files and code files.`
+                };
             }
         }
 
-        // Unsupported file type (PDFs not supported)
         return {
             fileName,
-            content: null,
-            type: 'unsupported',
-            message: `File type ${ext} is not supported for AI analysis. Supported types: text files, code files, and PDFs.`
-        }
+            content: content.substring(0, 50000), // Limit to 50k chars
+            type: 'text'
+        };
 
     } catch (error) {
-        console.error('Error extracting file content:', error)
+        console.error('Error extracting file content:', error);
         return {
-            fileName: path.basename(filePath),
+            fileName: originalName || (typeof filePathOrBuffer === 'string' ? path.basename(filePathOrBuffer) : 'file'),
             content: null,
             type: 'error',
             message: `Error reading file: ${error.message}`
-        }
+        };
     }
 }
 

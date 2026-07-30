@@ -9,6 +9,7 @@ import fs from 'fs';
 import crypto from 'crypto';
 import projectModel from './models/project.model.js';
 import messageModel from './models/message.model.js';
+import FileModel from './models/file.model.js';
 import { generateResult, extractFileContent } from './services/ai.service.js';
 
 const port = process.env.PORT || 3000;
@@ -100,12 +101,21 @@ io.on('connection', socket => {
 
             try {
                 // Check if there's a file attached to analyze
-                let fileContext = null
-                if (data.fileUrl) {
+                let fileUrl = data.fileUrl;
+                if (!fileUrl && data.files && data.files.length > 0) {
+                    fileUrl = data.files[0].url;
+                }
+
+                let fileContext = null;
+                if (fileUrl) {
                     // Extract filename from URL (format: /files/filename)
-                    const filename = data.fileUrl.split('/').pop()
-                    const filePath = path.join(process.cwd(), 'uploads', filename)
-                    fileContext = await extractFileContent(filePath)
+                    const filename = fileUrl.split('/').pop();
+                    const fileRecord = await FileModel.findOne({ filename });
+                    if (!fileRecord) {
+                        console.error('File not found in MongoDB:', filename);
+                        throw new Error(`File not found: ${filename}`);
+                    }
+                    fileContext = await extractFileContent(fileRecord.data, fileRecord.originalName, fileRecord.mimetype);
                 }
 
                 const result = await generateResult(prompt, fileContext);
@@ -175,23 +185,24 @@ io.on('connection', socket => {
 
             try {
                 // Extract file content for AI analysis
-                let fileContext = null
-                if (data.fileUrl) {
-                    console.log('File URL found:', data.fileUrl);
-                    const filename = data.fileUrl.split('/').pop()
-                    const filePath = path.join(process.cwd(), 'uploads', filename)
-                    console.log('Attempting to read file from:', filePath);
+                let fileUrl = data.fileUrl;
+                if (!fileUrl && data.files && data.files.length > 0) {
+                    fileUrl = data.files[0].url;
+                }
 
-                    // Check if file exists
-                    if (!fs.existsSync(filePath)) {
-                        console.error('File not found at path:', filePath);
-                        throw new Error(`File not found: ${filename}`)
+                let fileContext = null;
+                if (fileUrl) {
+                    console.log('File URL found:', fileUrl);
+                    const filename = fileUrl.split('/').pop();
+                    const fileRecord = await FileModel.findOne({ filename });
+                    if (!fileRecord) {
+                        console.error('File not found in MongoDB:', filename);
+                        throw new Error(`File not found: ${filename}`);
                     }
-
-                    fileContext = await extractFileContent(filePath)
+                    fileContext = await extractFileContent(fileRecord.data, fileRecord.originalName, fileRecord.mimetype);
                     console.log('File context extracted:', fileContext ? 'Success' : 'Failed', fileContext?.type);
                 } else {
-                    console.log('No fileUrl in data. Data keys:', Object.keys(data));
+                    console.log('No file URL found in message data. Data keys:', Object.keys(data));
                 }
 
                 const result = await generateResult(prompt, fileContext);

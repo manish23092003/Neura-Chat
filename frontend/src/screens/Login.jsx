@@ -6,14 +6,12 @@ import axios from '../config/axios'
 import { UserContext } from '../context/user.context'
 import Input from '../components/ui/Input'
 import Button from '../components/ui/Button'
-import Checkbox from '../components/ui/Checkbox'
 
 /* ── Main Login component ── */
 const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [rememberMe, setRememberMe] = useState(false)
   const [emailValid, setEmailValid] = useState(null)
   const [formError, setFormError] = useState('')
 
@@ -40,7 +38,6 @@ const Login = () => {
     try {
       const res = await axios.post('/users/login', { email, password })
       localStorage.setItem('token', res.data.token)
-      if (rememberMe) localStorage.setItem('rememberMe', 'true')
       setUser(res.data.user)
       toast.success('Welcome back!')
       // Check if there is a pending invite to redirect to
@@ -58,7 +55,7 @@ const Login = () => {
     } finally {
       setLoading(false)
     }
-  }, [email, password, emailValid, rememberMe, setUser, navigate])
+  }, [email, password, emailValid, setUser, navigate])
 
   return (
     <div
@@ -162,25 +159,11 @@ const Login = () => {
               />
             </motion.div>
 
-            {/* Remember me */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.15 }}
-            >
-              <Checkbox
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                label="Keep me signed in for 30 days"
-                id="remember-me"
-              />
-            </motion.div>
-
             {/* Submit */}
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+              transition={{ delay: 0.15 }}
             >
               <Button
                 type="submit"

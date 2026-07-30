@@ -1408,7 +1408,7 @@
   border-radius: var(--radius-btn);
   font-size: 13px;
   font-weight: 600;
-  color: #fff;
+  color: var(--nc-bg);
   background-color: var(--nc-primary);
   border: none;
   cursor: pointer;
@@ -1488,4 +1488,329 @@
 .code-editor-container .code-content pre {
   margin: 0;
   padding: 16px;
+}
+
+/* ── Premium File Preview System (Google/Slack inspired) ── */
+.file-preview-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background-color: var(--nc-surface);
+  border: 1px solid var(--nc-border);
+  border-radius: 12px;
+  max-width: 320px;
+  width: 100%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.01);
+  transition: all var(--duration-fast) ease;
+  margin-top: 8px;
+}
+
+.file-preview-card:hover {
+  border-color: var(--nc-border-hover);
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-1px);
+}
+
+.file-preview-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.file-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  font-size: 20px;
+  flex-shrink: 0;
+  transition: transform var(--duration-fast) ease;
+}
+
+.file-preview-card:hover .file-icon-box {
+  transform: scale(1.05);
+}
+
+.file-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.file-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--nc-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.file-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-size {
+  font-size: 11px;
+  color: var(--nc-text-secondary);
+  font-weight: 500;
+}
+
+.file-type-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* Download action button on the right */
+.file-download-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--nc-border);
+  background-color: var(--nc-surface);
+  color: var(--nc-text-secondary);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+  flex-shrink: 0;
+}
+
+.file-download-action-btn:hover {
+  background-color: var(--nc-primary);
+  color: var(--nc-bg);
+  border-color: transparent;
+}
+
+/* ── Theme Palette for File Icons & Badges ── */
+/* PDF */
+.theme-pdf .file-icon-box {
+  background-color: rgba(239, 68, 68, 0.09);
+  color: #EF4444;
+}
+.theme-pdf .file-type-badge {
+  background-color: rgba(239, 68, 68, 0.08);
+  color: #EF4444;
+}
+
+/* Word Docs */
+.theme-word .file-icon-box {
+  background-color: rgba(59, 130, 246, 0.09);
+  color: #3B82F6;
+}
+.theme-word .file-type-badge {
+  background-color: rgba(59, 130, 246, 0.08);
+  color: #3B82F6;
+}
+
+/* Excel Spreadsheets */
+.theme-excel .file-icon-box {
+  background-color: rgba(16, 185, 129, 0.09);
+  color: #10B981;
+}
+.theme-excel .file-type-badge {
+  background-color: rgba(16, 185, 129, 0.08);
+  color: #10B981;
+}
+
+/* PowerPoint Presentations */
+.theme-powerpoint .file-icon-box {
+  background-color: rgba(245, 158, 11, 0.09);
+  color: #F59E0B;
+}
+.theme-powerpoint .file-type-badge {
+  background-color: rgba(245, 158, 11, 0.08);
+  color: #F59E0B;
+}
+
+/* ZIP / Archives */
+.theme-zip .file-icon-box {
+  background-color: rgba(139, 92, 246, 0.09);
+  color: #8B5CF6;
+}
+.theme-zip .file-type-badge {
+  background-color: rgba(139, 92, 246, 0.08);
+  color: #8B5CF6;
+}
+
+/* Text / Logs */
+.theme-text .file-icon-box {
+  background-color: rgba(107, 114, 128, 0.09);
+  color: #6B7280;
+}
+.theme-text .file-type-badge {
+  background-color: rgba(107, 114, 128, 0.08);
+  color: #6B7280;
+}
+
+/* Generic */
+.theme-generic .file-icon-box {
+  background-color: var(--nc-elevated);
+  color: var(--nc-text-secondary);
+}
+.theme-generic .file-type-badge {
+  background-color: var(--nc-elevated);
+  color: var(--nc-text-secondary);
+}
+
+/* ── Image, Video, & Audio Card Previews ── */
+.file-preview-image-card, .file-preview-video-card, .file-preview-audio-card {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0;
+  overflow: hidden;
+  max-width: 280px;
+}
+
+.image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 150px;
+  background-color: var(--nc-elevated);
+  overflow: hidden;
+}
+
+.image-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--duration-base) ease;
+}
+
+.file-preview-image-card:hover .image-wrapper img {
+  transform: scale(1.03);
+}
+
+.image-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity var(--duration-fast) ease;
+}
+
+.image-wrapper:hover .image-overlay {
+  opacity: 1;
+}
+
+.overlay-download-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background-color: rgba(255, 255, 255, 0.9);
+  color: #000;
+  border: none;
+  cursor: pointer;
+  transition: transform var(--duration-fast) ease, background-color var(--duration-fast) ease;
+  font-size: 18px;
+}
+
+.overlay-download-btn:hover {
+  transform: scale(1.1);
+  background-color: #FFFFFF;
+}
+
+.image-card-footer, .video-card-footer, .audio-card-footer {
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background-color: var(--nc-surface);
+}
+
+.image-card-footer {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.video-wrapper {
+  width: 100%;
+  height: 150px;
+  background-color: #000;
+}
+
+.video-wrapper video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.video-card-info, .audio-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.footer-download-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--nc-border);
+  background-color: transparent;
+  color: var(--nc-text-secondary);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+}
+
+.footer-download-btn:hover {
+  background-color: var(--nc-primary);
+  color: var(--nc-bg);
+  border-color: transparent;
+}
+
+/* ── Audio Card Previews ── */
+.file-preview-audio-card {
+  max-width: 320px;
+}
+
+.audio-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px 6px;
+  background-color: var(--nc-elevated);
+}
+
+.audio-icon {
+  font-size: 24px;
+  color: var(--nc-accent);
+  flex-shrink: 0;
+}
+
+.audio-player {
+  flex: 1;
+  height: 32px;
+  outline: none;
 }

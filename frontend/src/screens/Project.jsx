@@ -438,11 +438,7 @@ const Project = () => {
         })
 
         try {
-            const response = await axios.post('/files/upload', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
-            })
+            const response = await axios.post('/files/upload', formData)
 
             const uploadedFiles = response.data.files
 
