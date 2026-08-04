@@ -1814,3 +1814,206 @@
   height: 32px;
   outline: none;
 }
+
+/* ── Live Preview Canvas & Device Simulator (Android Studio style) ── */
+.preview-canvas-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+  background-color: #0b0b0f;
+}
+
+.preview-canvas {
+  position: relative;
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #0b0b0f;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+  background-size: 20px 20px;
+  padding: 40px;
+  min-height: 0;
+}
+
+.preview-resizer {
+  width: 4px;
+  cursor: col-resize;
+  background-color: var(--nc-border);
+  position: relative;
+  z-index: 30;
+  transition: background-color 0.2s ease, width 0.2s ease;
+  margin-left: -2px;
+  margin-right: -2px;
+}
+
+.preview-resizer:hover,
+.preview-resizer.dragging {
+  background-color: var(--nc-primary) !important;
+  width: 6px !important;
+}
+
+/* Device mockups */
+.device-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center center;
+}
+
+/* Mobile device mockup */
+.device-phone {
+  background-color: #000000;
+  border: 12px solid #1a1a24;
+  border-radius: 40px;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Screen bezel reflection effect */
+.device-phone::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 130px;
+  height: 20px;
+  background-color: #1a1a24;
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+  z-index: 100;
+}
+
+/* Speaker & Camera Notch details */
+.device-phone-speaker {
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 45px;
+  height: 4px;
+  background-color: #374151;
+  border-radius: 2px;
+  z-index: 101;
+}
+
+.device-phone-camera {
+  position: absolute;
+  top: 4px;
+  left: calc(50% + 32px);
+  width: 6px;
+  height: 6px;
+  background-color: #111827;
+  border: 1px solid #374151;
+  border-radius: 50%;
+  z-index: 101;
+}
+
+/* Bottom home bar indicator */
+.device-phone::after {
+  content: "";
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.35);
+  border-radius: 2px;
+  z-index: 100;
+  pointer-events: none;
+}
+
+/* Tablet mockup */
+.device-tablet {
+  background-color: #000000;
+  border: 16px solid #1a1a24;
+  border-radius: 24px;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Small camera indicator on tablet */
+.device-tablet-camera {
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  background-color: #111827;
+  border-radius: 50%;
+  z-index: 100;
+}
+
+/* Laptop mockup */
+.device-laptop {
+  background-color: #000000;
+  border: 14px solid #1a1a24;
+  border-bottom: none;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Laptop camera notch */
+.device-laptop-camera {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  background-color: #111827;
+  border-radius: 50%;
+  z-index: 100;
+}
+
+.device-laptop-base {
+  width: calc(100% + 48px);
+  margin-left: -24px;
+  height: 12px;
+  background: linear-gradient(to bottom, #4b5563, #1f2937);
+  border-radius: 0 0 12px 12px;
+  position: relative;
+  z-index: 10;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+.device-laptop-base::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70px;
+  height: 5px;
+  background-color: #111827;
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
+}
+
+/* Responsive / Free device container */
+.device-responsive {
+  border: 1px dashed var(--nc-border);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  background-color: #000;
+  position: relative;
+}
+

@@ -7,7 +7,7 @@ import axios from '../config/axios'
 import { initializeSocket, receiveMessage, sendMessage } from '../config/socket'
 import Markdown from 'markdown-to-jsx'
 import hljs from 'highlight.js'
-import { getWebContainer } from '../config/webContainer'
+import { getLifoSandbox, destroyLifoSandbox, runLifoProject } from '../config/lifoRuntime'
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
 import Avatar from '../components/ui/Avatar'
@@ -69,25 +69,40 @@ const Project = () => {
     const { user } = useContext(UserContext)
     const messageBox = useRef(null)
 
+    const initialProject = location?.state?.project || null;
+
+    useEffect(() => {
+        if (!initialProject) {
+            toast.error('Project details not found. Redirecting to home...');
+            navigate('/home');
+        }
+    }, [initialProject, navigate]);
+
     const [isSidePanelOpen, setIsSidePanelOpen] = useState(false)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [selectedUserId, setSelectedUserId] = useState(new Set())
-    const [project, setProject] = useState(location.state.project)
+    const [project, setProject] = useState(initialProject || { name: 'Loading...', users: [], fileTree: {} })
     const [message, setMessage] = useState('')
     const [users, setUsers] = useState([])
     const [messages, setMessages] = useState([])
-    const [fileTree, setFileTree] = useState({})
+    const [fileTree, setFileTree] = useState(initialProject?.fileTree || {})
     const [currentFile, setCurrentFile] = useState(null)
     const [openFiles, setOpenFiles] = useState([])
-    const [webContainer, setWebContainer] = useState(null)
+    const [lifoSandbox, setLifoSandbox] = useState(null)
     const [iframeUrl, setIframeUrl] = useState(null)
-    const [runProcess, setRunProcess] = useState(null)
+    const [previewsList, setPreviewsList] = useState([])
+    const [previewWidth, setPreviewWidth] = useState(375)
+    const [previewPanelWidth, setPreviewPanelWidth] = useState(420)
+    const [isDragging, setIsDragging] = useState(false)
+    const [previewDevice, setPreviewDevice] = useState('mobile') // 'mobile', 'tablet', 'laptop', 'responsive'
+    const [previewZoom, setPreviewZoom] = useState('fit') // 'fit', 0.5, 0.75, 1.0, 1.25
+    const [previewOrientation, setPreviewOrientation] = useState('portrait') // 'portrait', 'landscape'
+    const [runtimeStatus, setRuntimeStatus] = useState('Idle') // Idle, Initializing, Installing Dependencies, Starting Application, Running, Failed
     const [isRunning, setIsRunning] = useState(false)
     const [fileSearchQuery, setFileSearchQuery] = useState('')
-    const [showReactionPicker, setShowReactionPicker] = useState(null) // Track which message shows reaction picker
-    const [typingUsers, setTypingUsers] = useState([]) // Track who is typing
-    const typingTimeoutRef = useRef(null) // For debouncing typing indicator
-    const lastNotifiedUrlRef = useRef(null)
+    const [showReactionPicker, setShowReactionPicker] = useState(null)
+    const [typingUsers, setTypingUsers] = useState([])
+    const typingTimeoutRef = useRef(null)
     const [isFileUploadModalOpen, setIsFileUploadModalOpen] = useState(false)
     const [uploadingFiles, setUploadingFiles] = useState(false)
     const [activeTab, setActiveTab] = useState('chat') // 'chat', 'tasks', 'files'
@@ -101,6 +116,44 @@ const Project = () => {
     useEffect(() => {
         fileTreeRef.current = fileTree
     }, [fileTree])
+
+    // Drag to resize live preview panel
+    useEffect(() => {
+        const handleMouseMove = (e) => {
+            if (!isDragging) return;
+            const newWidth = window.innerWidth - e.clientX;
+            const maxWidth = window.innerWidth * 0.75;
+            if (newWidth >= 320 && newWidth <= maxWidth) {
+                setPreviewPanelWidth(newWidth);
+            }
+        };
+
+        const handleMouseUp = () => {
+            setIsDragging(false);
+        };
+
+        if (isDragging) {
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+        }
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isDragging]);
+
+    const handleMouseDown = (e) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+
+    // Clean up Lifo sandbox when unmounting or switching projects
+    useEffect(() => {
+        return () => {
+            destroyLifoSandbox();
+        };
+    }, []);
 
     useEffect(() => {
         if (isAiThinking) {
@@ -699,26 +752,8 @@ const Project = () => {
     }
 
     useEffect(() => {
+        if (!project?._id) return;
         const socket = initializeSocket(project._id)
-
-        if (!webContainer) {
-            getWebContainer().then(container => {
-                setWebContainer(container)
-                console.log("container started")
-
-                container.on('server-ready', (port, url) => {
-                    console.log('Server ready - Port:', port, 'URL:', url)
-                    // Ensure we have the full URL, not just a path
-                    const fullUrl = url.startsWith('http') ? url : `http://localhost:${port}`
-                    console.log('Setting iframe URL to:', fullUrl)
-                    setIframeUrl(fullUrl)
-                    if (lastNotifiedUrlRef.current !== fullUrl) {
-                        lastNotifiedUrlRef.current = fullUrl
-                        toast.success('Server started successfully!')
-                    }
-                })
-            })
-        }
 
         const messageHandler = (data) => {
             console.log(data)
@@ -740,7 +775,6 @@ const Project = () => {
                 if (parsedMessage.fileTree) {
                     const normalizedTree = normalizeFileTree(parsedMessage.fileTree)
                     const mergedTree = mergeFileTrees(fileTreeRef.current, normalizedTree)
-                    webContainer?.mount(mergedTree)
                     setFileTree(mergedTree)
                     saveFileTree(mergedTree)
                 }
@@ -803,23 +837,27 @@ const Project = () => {
 
         receiveMessage('project-file-message', fileMessageHandler)
 
-        axios.get(`/projects/get-project/${location.state.project._id}`).then(res => {
-            setProject(res.data.project)
-            setFileTree(res.data.project.fileTree || {})
-        })
-
-        // Fetch historical messages
-        axios.get(`/projects/get-messages/${location.state.project._id}`).then(res => {
-            setMessages(res.data.messages || [])
-            // Scroll to bottom initially
-            setTimeout(() => {
-                if (messageBox.current) {
-                    messageBox.current.scrollTop = messageBox.current.scrollHeight
+        if (project?._id) {
+            axios.get(`/projects/get-project/${project._id}`).then(res => {
+                if (res.data?.project) {
+                    setProject(res.data.project)
+                    setFileTree(res.data.project.fileTree || {})
                 }
-            }, 500)
-        }).catch(err => {
-            console.error('Failed to load messages', err)
-        })
+            }).catch(console.error)
+
+            // Fetch historical messages
+            axios.get(`/projects/get-messages/${project._id}`).then(res => {
+                setMessages(res.data.messages || [])
+                // Scroll to bottom initially
+                setTimeout(() => {
+                    if (messageBox.current) {
+                        messageBox.current.scrollTop = messageBox.current.scrollHeight
+                    }
+                }, 500)
+            }).catch(err => {
+                console.error('Failed to load messages', err)
+            })
+        }
 
         axios.get('/users/all').then(res => {
             setUsers(res.data.users)
@@ -1461,84 +1499,65 @@ const Project = () => {
                                 ))
                             )}
 
-                            {openFiles.length > 0 && (
+                            {Object.keys(fileTree).length > 0 && (
                                 <Button
                                     onClick={async () => {
-                                        if (!webContainer) { toast.error('WebContainer is not ready yet.'); return }
-                                        setIsRunning(true)
-                                        try {
-                                            await webContainer.mount(fileTree)
-                                            const packageJson = fileTree['package.json']?.file?.contents
-                                            const needsInstall = packageJson && packageJson !== window.lastPackageJson
-                                            if (needsInstall) {
-                                                toast.loading('Installing dependencies…', { id: 'install' })
-                                                setTerminalOutput('Installing dependencies…\n')
-                                                const installProcess = await webContainer.spawn('npm', ['install'])
-                                                installProcess.output.pipeTo(new WritableStream({
-                                                    write(chunk) {
-                                                        setTerminalOutput(prev => prev + chunk)
-                                                        console.log(chunk)
-                                                    }
-                                                }))
-                                                await installProcess.exit
-                                                window.lastPackageJson = packageJson
-                                                toast.success('Dependencies installed!', { id: 'install' })
-                                            } else if (packageJson) {
-                                                setTerminalOutput('Using cached dependencies\n')
-                                                toast.success('Using cached dependencies', { duration: 1000 })
-                                            }
-
-                                            if (runProcess) runProcess.kill()
-                                            toast.loading('Starting server…', { id: 'start' })
-                                            setTerminalOutput(prev => prev + 'Starting server…\n')
-
-                                            let startCommand = 'node'
-                                            let startArgs = [fileTree['app.js'] ? 'app.js' : 'index.js']
-
+                                        let sandbox = lifoSandbox;
+                                        if (!sandbox) {
+                                            toast.loading('Initializing Lifo.sh Runtime…', { id: 'lifo-boot' });
                                             try {
-                                                const pkg = JSON.parse(packageJson)
-                                                if (pkg.scripts && pkg.scripts.start) {
-                                                    const parts = pkg.scripts.start.trim().split(/\s+/)
-                                                    if (parts[0] === 'node') {
-                                                        startCommand = 'node'
-                                                        startArgs = parts.slice(1)
-                                                    } else {
-                                                        startCommand = 'npm'
-                                                        startArgs = ['start']
-                                                    }
-                                                } else if (pkg.main) {
-                                                    startCommand = 'node'
-                                                    startArgs = [pkg.main]
-                                                }
+                                                sandbox = await getLifoSandbox(project._id);
+                                                setLifoSandbox(sandbox);
+                                                toast.success('Lifo Sandbox Ready!', { id: 'lifo-boot' });
                                             } catch (e) {
-                                                // Fallback
+                                                toast.error('Failed to initialize Lifo sandbox', { id: 'lifo-boot' });
+                                                setRuntimeStatus('Failed');
+                                                return;
                                             }
+                                        }
 
-                                            setTerminalOutput(prev => prev + `Running: ${startCommand} ${startArgs.join(' ')}\n`)
-                                            let tempRunProcess = await webContainer.spawn(startCommand, startArgs)
-                                            tempRunProcess.output.pipeTo(new WritableStream({
-                                                write(chunk) {
-                                                    setTerminalOutput(prev => prev + chunk)
-                                                    console.log(chunk)
+                                        setIsRunning(true);
+                                        setTerminalOutput('');
+                                        setIframeUrl(null);
+
+                                        try {
+                                            const result = await runLifoProject({
+                                                sandbox,
+                                                fileTree,
+                                                onStatusChange: (status) => {
+                                                    setRuntimeStatus(status);
+                                                },
+                                                onLog: (logText) => {
+                                                    setTerminalOutput(prev => prev + logText);
                                                 }
-                                            }))
-                                            setRunProcess(tempRunProcess)
-                                            toast.dismiss('start')
+                                            });
+
+                                            if (result.success && result.previewUrl) {
+                                                setIframeUrl(result.previewUrl);
+                                                setPreviewsList(result.previews || []);
+                                                toast.success('Application running in Lifo.sh preview!');
+                                            } else if (result.reason === 'unsupported_native') {
+                                                toast.error('Native binary dependencies detected (see console).');
+                                            } else {
+                                                toast.error(result.message || 'Execution completed with warnings.');
+                                            }
                                         } catch (error) {
-                                            toast.error('Failed to run project')
-                                            console.error(error)
+                                            console.error('Lifo execution exception:', error);
+                                            setRuntimeStatus('Failed');
+                                            setTerminalOutput(prev => prev + `\nExecution Error: ${error.message || String(error)}\n`);
+                                            toast.error(`Execution note: ${error.message || 'Check console output'}`);
                                         } finally {
-                                            setIsRunning(false)
+                                            setIsRunning(false);
                                         }
                                     }}
                                     size="sm"
                                     loading={isRunning}
                                     variant="primary"
-                                    icon={<i className="ri-play-fill" />}
+                                    icon={<i className={isRunning ? "ri-loader-4-line nc-spin" : "ri-play-fill"} />}
                                     className="ml-auto flex-shrink-0"
                                     style={{ height: 30, padding: '0 12px', fontSize: 13 }}
                                 >
-                                    Run
+                                    {isRunning ? runtimeStatus : 'Run'}
                                 </Button>
                             )}
                         </div>
@@ -1624,38 +1643,285 @@ const Project = () => {
                     </div>
                 </section>
 
+                {/* Resizer Handle */}
+                <div
+                    onMouseDown={handleMouseDown}
+                    className={`preview-resizer ${isDragging ? 'dragging' : ''}`}
+                    title="Drag to resize Live Preview"
+                />
+
                 {/* ── Right: Live Preview & AI Assistant ── */}
                 <motion.section
                     className="flex flex-col shrink-0 overflow-hidden"
                     style={{ 
-                        width: 320, 
+                        width: previewPanelWidth, 
                         background: 'var(--nc-bg)', 
                         borderLeft: '1px solid var(--nc-border)', 
                         position: 'relative', 
                         zIndex: 20 
                     }}
                 >
-                    {iframeUrl && webContainer ? (
-                        <>
-                            <div className="flex items-center gap-2 px-4 py-3 shrink-0" style={{ borderBottom: '1px solid var(--nc-border)' }}>
-                                <div className="w-6 h-6 rounded-[6px] flex items-center justify-center" style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.25)' }}>
-                                    <span className="w-2 h-2 rounded-full" style={{ background: 'var(--nc-success)' }} />
+                    {iframeUrl ? (
+                        <div className="preview-canvas-container">
+                            {/* Device Selector Toolbar */}
+                            <div className="flex items-center justify-between gap-2 px-4 py-3 shrink-0" style={{ borderBottom: '1px solid var(--nc-border)', background: 'var(--nc-surface)' }}>
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                    <div className="w-5 h-5 rounded-[5px] flex items-center justify-center" style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.25)' }}>
+                                        <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--nc-success)' }} />
+                                    </div>
+                                    <span className="text-[11px] font-[800] tracking-wider" style={{ color: 'var(--nc-success)' }}>LIVE PREVIEW</span>
                                 </div>
-                                <span className="text-[12px] font-[700]" style={{ color: 'var(--nc-success)' }}>LIVE PREVIEW</span>
-                                <input
-                                    type="text" value={iframeUrl} readOnly
-                                    className="nc-input flex-1"
-                                    style={{ height: 30, fontSize: 12, marginLeft: 8, cursor: 'default' }}
-                                    title="WebContainer URL"
-                                />
+
+                                {/* Device Presets Button Group */}
+                                <div className="flex items-center gap-0.5 border rounded-[8px] p-0.5" style={{ borderColor: 'var(--nc-border)', background: 'var(--nc-bg)' }}>
+                                    {[
+                                        { id: 'mobile', icon: 'ri-smartphone-line', tooltip: 'Phone View (375x812)' },
+                                        { id: 'tablet', icon: 'ri-tablet-line', tooltip: 'Tablet View (768x1024)' },
+                                        { id: 'laptop', icon: 'ri-computer-line', tooltip: 'Laptop View (1024x640)' },
+                                        { id: 'responsive', icon: 'ri-aspect-ratio-line', tooltip: 'Responsive View (Custom)' },
+                                    ].map((device) => (
+                                        <button
+                                            key={device.id}
+                                            onClick={() => {
+                                                setPreviewDevice(device.id);
+                                                if (device.id === 'laptop') {
+                                                    setPreviewOrientation('landscape');
+                                                } else {
+                                                    setPreviewOrientation('portrait');
+                                                }
+                                            }}
+                                            className="w-7 h-7 rounded-[6px] flex items-center justify-center transition-all"
+                                            title={device.tooltip}
+                                            style={{
+                                                border: 'none',
+                                                background: previewDevice === device.id ? 'var(--nc-primary-muted)' : 'transparent',
+                                                color: previewDevice === device.id ? 'var(--nc-primary)' : 'var(--nc-text-muted)',
+                                                cursor: 'pointer',
+                                            }}
+                                        >
+                                            <i className={`${device.icon} text-[13px]`} />
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Orientation & Zoom & Extra controls */}
+                                <div className="flex items-center gap-1.5">
+                                    {previewDevice !== 'responsive' && (
+                                        <button
+                                            onClick={() => setPreviewOrientation(prev => prev === 'portrait' ? 'landscape' : 'portrait')}
+                                            className="w-7 h-7 rounded-[6px] border flex items-center justify-center transition-colors"
+                                            title={`Rotate Screen (${previewOrientation === 'portrait' ? 'Landscape' : 'Portrait'})`}
+                                            style={{
+                                                borderColor: 'var(--nc-border)',
+                                                background: 'var(--nc-bg)',
+                                                color: 'var(--nc-text-secondary)',
+                                                cursor: 'pointer',
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--nc-border-hover)'}
+                                            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--nc-border)'}
+                                        >
+                                            <i className={`ri-clockwise-2-line text-[13px] transition-transform duration-300 ${previewOrientation === 'landscape' ? 'rotate-90' : ''}`} />
+                                        </button>
+                                    )}
+
+                                    {/* Zoom Dropdown */}
+                                    <select
+                                        value={previewZoom}
+                                        onChange={(e) => setPreviewZoom(e.target.value)}
+                                        className="nc-input"
+                                        style={{
+                                            height: 28,
+                                            fontSize: 11,
+                                            background: 'var(--nc-bg)',
+                                            border: '1px solid var(--nc-border)',
+                                            color: 'var(--nc-text-primary)',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            outline: 'none',
+                                            padding: '0 6px',
+                                            width: 60,
+                                        }}
+                                        title="Zoom scale"
+                                    >
+                                        <option value="fit">Fit</option>
+                                        <option value="0.5">50%</option>
+                                        <option value="0.75">75%</option>
+                                        <option value="1.0">100%</option>
+                                        <option value="1.25">125%</option>
+                                    </select>
+                                </div>
                             </div>
-                            <iframe src={iframeUrl} className="flex-1 bg-white" title="Preview" />
-                        </>
+
+                            {/* Path Selector Bar / URL display */}
+                            <div className="flex items-center gap-2 px-4 py-2 shrink-0 border-b" style={{ background: 'var(--nc-surface)', borderColor: 'var(--nc-border)' }}>
+                                <i className="ri-global-line text-[13px]" style={{ color: 'var(--nc-text-muted)' }} />
+                                {previewsList && previewsList.length > 1 ? (
+                                    <select
+                                        value={iframeUrl}
+                                        onChange={(e) => setIframeUrl(e.target.value)}
+                                        className="nc-input flex-1"
+                                        style={{
+                                            height: 26,
+                                            fontSize: 11,
+                                            background: 'var(--nc-bg)',
+                                            border: '1px solid var(--nc-border)',
+                                            color: 'var(--nc-text-primary)',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            outline: 'none',
+                                            padding: '0 6px'
+                                        }}
+                                    >
+                                        {previewsList.map((p, idx) => (
+                                            <option key={idx} value={p.url} style={{ background: 'var(--nc-bg)', color: 'var(--nc-text-primary)' }}>
+                                                {p.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <input
+                                        type="text" value={iframeUrl} readOnly
+                                        className="nc-input flex-1"
+                                        style={{ height: 26, fontSize: 11, cursor: 'default', background: 'transparent', border: 'none', color: 'var(--nc-text-muted)' }}
+                                        title="Lifo Sandbox URL"
+                                    />
+                                )}
+                            </div>
+
+                            {/* Width Controller (only show when responsive mode is active) */}
+                            {previewDevice === 'responsive' && (
+                                <div className="flex items-center gap-3 px-4 py-2 shrink-0 border-b" style={{ background: 'var(--nc-surface)', borderColor: 'var(--nc-border)' }}>
+                                    <span className="text-[10px] font-[600] uppercase tracking-wider text-[var(--nc-text-muted)] w-20">
+                                        Width: {previewWidth}px
+                                    </span>
+                                    <input
+                                        type="range"
+                                        min="320"
+                                        max="1200"
+                                        step="10"
+                                        value={previewWidth}
+                                        onChange={(e) => setPreviewWidth(Number(e.target.value))}
+                                        className="flex-1 cursor-pointer accent-[var(--nc-primary)]"
+                                        style={{ height: 4 }}
+                                        aria-label="Device width simulation"
+                                    />
+                                    <button
+                                        onClick={() => setPreviewWidth(375)}
+                                        className="text-[10px] px-2 py-0.5 rounded font-[500] hover:bg-[rgba(34,197,94,0.15)] transition-colors"
+                                        style={{ background: 'var(--nc-elevated)', border: '1px solid var(--nc-border)', color: 'var(--nc-text-secondary)', cursor: 'pointer' }}
+                                    >
+                                        Reset
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Canvas Viewport containing simulated device */}
+                            {(() => {
+                                const deviceDimensions = {
+                                    mobile: {
+                                        portrait: { width: 375, height: 812 },
+                                        landscape: { width: 812, height: 375 }
+                                    },
+                                    tablet: {
+                                        portrait: { width: 768, height: 1024 },
+                                        landscape: { width: 1024, height: 768 }
+                                    },
+                                    laptop: {
+                                        portrait: { width: 800, height: 1200 },
+                                        landscape: { width: 1024, height: 640 }
+                                    },
+                                    responsive: {
+                                        portrait: { width: previewWidth, height: '100%' },
+                                        landscape: { width: previewWidth, height: '100%' }
+                                    }
+                                };
+
+                                const dims = deviceDimensions[previewDevice][previewOrientation];
+                                const devWidth = dims.width;
+                                const devHeight = dims.height;
+
+                                let scale = 1;
+                                if (previewZoom === 'fit') {
+                                    const canvasPadding = 80;
+                                    const availableWidth = previewPanelWidth - canvasPadding;
+                                    if (devWidth > availableWidth) {
+                                        scale = availableWidth / devWidth;
+                                    }
+                                } else {
+                                    scale = Number(previewZoom);
+                                }
+
+                                return (
+                                    <div className="preview-canvas">
+                                        <div 
+                                            className="device-wrapper"
+                                            style={{
+                                                transform: `scale(${scale})`,
+                                                width: devWidth,
+                                                height: previewDevice === 'laptop' && previewOrientation === 'landscape' 
+                                                    ? (typeof devHeight === 'number' ? devHeight + 12 : devHeight) 
+                                                    : devHeight,
+                                                flexShrink: 0
+                                            }}
+                                        >
+                                            {previewDevice === 'mobile' && (
+                                                <div className="device-phone" style={{ width: devWidth, height: devHeight }}>
+                                                    <div className="device-phone-speaker" />
+                                                    <div className="device-phone-camera" />
+                                                    <iframe
+                                                        src={iframeUrl}
+                                                        title="Mobile Preview"
+                                                        style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {previewDevice === 'tablet' && (
+                                                <div className="device-tablet" style={{ width: devWidth, height: devHeight }}>
+                                                    <div className="device-tablet-camera" />
+                                                    <iframe
+                                                        src={iframeUrl}
+                                                        title="Tablet Preview"
+                                                        style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {previewDevice === 'laptop' && (
+                                                <div className="flex flex-col items-center w-full h-full">
+                                                    <div className="device-laptop" style={{ width: devWidth, height: devHeight }}>
+                                                        <div className="device-laptop-camera" />
+                                                        <iframe
+                                                            src={iframeUrl}
+                                                            title="Laptop Preview"
+                                                            style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }}
+                                                        />
+                                                    </div>
+                                                    {previewOrientation === 'landscape' && (
+                                                        <div className="device-laptop-base" style={{ width: devWidth }} />
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {previewDevice === 'responsive' && (
+                                                <div className="device-responsive" style={{ width: devWidth, height: '100%', minHeight: 400 }}>
+                                                    <iframe
+                                                        src={iframeUrl}
+                                                        title="Responsive Preview"
+                                                        style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                        </div>
                     ) : (
                         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
                             <RobotSkeleton 
-                                state={isRunning ? 'thinking' : terminalOutput.includes('Error:') ? 'error' : 'idle'} 
-                                message={isRunning ? 'Compiling server…' : 'Awaiting start commands. Click Run to boot!'}
+                                state={isRunning ? 'thinking' : terminalOutput.includes('UNSUPPORTED') || terminalOutput.includes('Error:') ? 'error' : 'idle'} 
+                                message={isRunning ? `${runtimeStatus}…` : terminalOutput.includes('UNSUPPORTED') ? 'Unsupported native framework' : 'Click Run to boot project inside Lifo.sh sandbox!'}
                             />
                         </div>
                     )}

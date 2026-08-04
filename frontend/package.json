@@ -10,6 +10,7 @@
     "start": "vite"
   },
   "dependencies": {
+    "@lifo-sh/core": "^0.10.5",
     "@webcontainer/api": "^1.5.1-internal.4",
     "axios": "^1.7.9",
     "framer-motion": "^12.23.26",
