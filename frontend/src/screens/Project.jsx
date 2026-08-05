@@ -76,7 +76,7 @@ const Project = () => {
     const [previewWidth, setPreviewWidth] = useState(375)
 
     // ── File tree hook ────────────────────────────────────────────────────────
-    const { fileTree, fileTreeRef, setFileTree, updateFile, mergeAiTree, getFile, getAllPaths } =
+    const { fileTree, fileTreeRef, setFileTree, updateFile, deleteFile, mergeAiTree, getFile, getAllPaths } =
         useFileTree(initialProject?.fileTree || {}, project._id, setProject)
 
     // ── Runtime hook ──────────────────────────────────────────────────────────
@@ -285,6 +285,15 @@ const Project = () => {
         toast.success(`Created file ${trimmed}`)
     }, [getFile, updateFile])
 
+    const handleDeleteFile = useCallback((fileName) => {
+        const confirmed = window.confirm(`Are you sure you want to delete ${fileName}?`)
+        if (!confirmed) return
+        deleteFile(fileName)
+        setOpenFiles(prev => prev.filter(f => f !== fileName))
+        setCurrentFile(prev => prev === fileName ? null : prev)
+        toast.success(`Deleted file ${fileName}`)
+    }, [deleteFile])
+
     const closeFile = useCallback((fileName, e) => {
         e.stopPropagation()
         setOpenFiles(prev => prev.filter(f => f !== fileName))
@@ -461,6 +470,7 @@ const Project = () => {
                         setOpenFiles={setOpenFiles}
                         onDownloadZip={downloadProjectAsZip}
                         onCreateFile={handleCreateFile}
+                        onDeleteFile={handleDeleteFile}
                     />
 
                     <CodeEditor

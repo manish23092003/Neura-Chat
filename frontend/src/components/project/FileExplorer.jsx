@@ -24,6 +24,7 @@ const FileExplorer = memo(function FileExplorer({
     setOpenFiles,
     onDownloadZip,
     onCreateFile,
+    onDeleteFile,
 }) {
     const [fileSearchQuery, setFileSearchQuery] = useState('')
     const [expandedFolders, setExpandedFolders] = useState({})
@@ -100,25 +101,46 @@ const FileExplorer = memo(function FileExplorer({
 
             const isActive = currentFile === currentPath
             return (
-                <button
+                <div
                     key={currentPath}
-                    onClick={() => openFile(currentPath)}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-[6px] text-left transition-all text-[13px] font-[500]"
+                    className="w-full flex items-center justify-between rounded-[6px] transition-all group/item"
                     style={{
                         paddingLeft: `${24 + level * 10}px`,
                         background: isActive ? 'var(--nc-primary-muted)' : 'transparent',
-                        color: isActive ? 'var(--nc-primary)' : 'var(--nc-text-secondary)',
                         border: `1px solid ${isActive ? 'var(--nc-primary-border)' : 'transparent'}`,
                     }}
-                    onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.color = 'var(--nc-text-primary)' } }}
-                    onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--nc-text-secondary)' } }}
+                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.03)' }}
+                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
                 >
-                    <i className="ri-file-code-line text-[14px] flex-shrink-0" style={{ color: isActive ? 'var(--nc-primary)' : 'var(--nc-text-muted)' }} />
-                    <span className="truncate">{key}</span>
-                </button>
+                    <button
+                        onClick={() => openFile(currentPath)}
+                        className="flex-1 flex items-center gap-2 py-1.5 text-left text-[13px] font-[500] min-w-0"
+                        style={{
+                            color: isActive ? 'var(--nc-primary)' : 'var(--nc-text-secondary)',
+                            background: 'transparent',
+                            border: 'none',
+                        }}
+                    >
+                        <i className="ri-file-code-line text-[14px] flex-shrink-0" style={{ color: isActive ? 'var(--nc-primary)' : 'var(--nc-text-muted)' }} />
+                        <span className="truncate">{key}</span>
+                    </button>
+                    {onDeleteFile && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteFile(currentPath);
+                            }}
+                            className="opacity-0 group-hover/item:opacity-100 p-1 hover:text-red-500 rounded text-[12px] transition-opacity mr-1 flex-shrink-0"
+                            title="Delete file"
+                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--nc-text-muted)' }}
+                        >
+                            <i className="ri-delete-bin-line" />
+                        </button>
+                    )}
+                </div>
             )
         })
-    }, [expandedFolders, currentFile, toggleFolder, openFile])
+    }, [expandedFolders, currentFile, toggleFolder, openFile, onDeleteFile])
 
     const isEmpty = Object.keys(fileTree).length === 0
 
@@ -172,19 +194,40 @@ const FileExplorer = memo(function FileExplorer({
                         </div>
                     ) : (
                         filteredFiles.map((file, idx) => (
-                            <button
+                            <div
                                 key={idx}
-                                onClick={() => openFile(file)}
-                                className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] text-left transition-all text-[13px] font-[500]"
+                                className="w-full flex items-center justify-between rounded-[8px] transition-all group/item"
                                 style={{
                                     background: currentFile === file ? 'var(--nc-primary-muted)' : 'transparent',
-                                    color: currentFile === file ? 'var(--nc-primary)' : 'var(--nc-text-secondary)',
                                     border: `1px solid ${currentFile === file ? 'var(--nc-primary-border)' : 'transparent'}`,
                                 }}
                             >
-                                <i className="ri-file-code-line text-[14px] flex-shrink-0" />
-                                <span className="truncate">{file}</span>
-                            </button>
+                                <button
+                                    onClick={() => openFile(file)}
+                                    className="flex-1 flex items-center gap-2 px-3 py-2 text-left text-[13px] font-[500] min-w-0"
+                                    style={{
+                                        color: currentFile === file ? 'var(--nc-primary)' : 'var(--nc-text-secondary)',
+                                        background: 'transparent',
+                                        border: 'none',
+                                    }}
+                                >
+                                    <i className="ri-file-code-line text-[14px] flex-shrink-0" />
+                                    <span className="truncate">{file}</span>
+                                </button>
+                                {onDeleteFile && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onDeleteFile(file);
+                                        }}
+                                        className="opacity-0 group-hover/item:opacity-100 p-1 hover:text-red-500 rounded text-[12px] transition-opacity mr-2 flex-shrink-0"
+                                        title="Delete file"
+                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--nc-text-muted)' }}
+                                    >
+                                        <i className="ri-delete-bin-line" />
+                                    </button>
+                                )}
+                            </div>
                         ))
                     )
                 ) : isEmpty ? (

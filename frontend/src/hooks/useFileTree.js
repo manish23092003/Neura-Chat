@@ -111,6 +111,27 @@ export const getAllFilePaths = (node, path = '', acc = []) => {
     return acc
 }
 
+/**
+ * Return an updated copy of the tree with the node at `pathStr` deleted.
+ */
+export const deleteFileFromTree = (tree, pathStr) => {
+    if (!pathStr) return tree
+    const parts = pathStr.split('/')
+    const newTree = structuredClone(tree)
+    let current = newTree
+    for (let i = 0; i < parts.length; i++) {
+        const segment = parts[i]
+        if (i === parts.length - 1) {
+            const dir = current.directory ?? current
+            delete dir[segment]
+        } else {
+            current = current.directory ? current.directory[segment] : current[segment]
+            if (!current) break
+        }
+    }
+    return newTree
+}
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 /**
@@ -183,6 +204,13 @@ const useFileTree = (initialTree, projectId, onProjectUpdate) => {
     }, [setFileTree])
 
     /**
+     * Delete a file from the tree and persist.
+     */
+    const deleteFile = useCallback((pathStr) => {
+        setFileTree((prev) => deleteFileFromTree(prev, pathStr))
+    }, [setFileTree])
+
+    /**
      * Merge an AI-generated file tree into the current tree.
      */
     const mergeAiTree = useCallback((aiTree) => {
@@ -197,6 +225,7 @@ const useFileTree = (initialTree, projectId, onProjectUpdate) => {
         fileTreeRef,
         setFileTree,
         updateFile,
+        deleteFile,
         mergeAiTree,
         saveNow,
         getFile: useCallback((p) => getFileByPath(fileTreeRef.current, p), []),

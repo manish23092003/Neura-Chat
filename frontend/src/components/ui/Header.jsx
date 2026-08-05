@@ -95,12 +95,12 @@ const Header = ({ onMenuToggle, showMenuButton = false }) => {
           aria-label="NeuraChat home"
         >
           <div
-            className="w-8 h-8 rounded-[8px] flex items-center justify-center flex-shrink-0"
+            className="w-8 h-8 rounded-[8px] flex items-center justify-center flex-shrink-0 overflow-hidden"
             style={{
-              backgroundColor: 'var(--nc-primary)',
+              backgroundColor: 'transparent',
             }}
           >
-            <i className="ri-sparkling-2-line text-[16px]" style={{ color: 'var(--nc-bg)' }} />
+            <img src="/favicon.png" alt="NeuraChat Logo" className="w-full h-full object-cover" />
           </div>
           <span
             className="hidden sm:block text-[15px] font-[700] tracking-tight"
