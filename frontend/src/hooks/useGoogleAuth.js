@@ -14,17 +14,17 @@ const GIS_SCRIPT_SRC = 'https://accounts.google.com/gsi/client'
 /**
  * useGoogleAuth — shared hook for Google Sign-In via Google Identity Services.
  *
- * Loads the GIS script once, initializes the Google client, and provides a
- * `triggerGoogleLogin` function that opens the Google popup. On success,
- * sends the ID token to POST /users/google-auth and updates auth context.
+ * Loads the GIS script once, initializes the Google client, and renders the
+ * official Google button directly into `buttonContainerRef` (if provided) or
+ * provides `triggerGoogleLogin` for programmatic One Tap.
  *
+ * @param {React.RefObject} [buttonContainerRef] - Optional ref to mount the official Google button into
  * @returns {{ triggerGoogleLogin, loading, error, scriptReady }}
  */
-export default function useGoogleAuth() {
+export default function useGoogleAuth(buttonContainerRef = null) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [scriptReady, setScriptReady] = useState(false)
-  const initializedRef = useRef(false)
 
   const { setUser } = useContext(UserContext)
   const navigate = useNavigate()
@@ -59,52 +59,51 @@ export default function useGoogleAuth() {
   }, [])
 
   // ── Handle the Google credential response ─────────────────────────────────
-  const handleCredentialResponse = useCallback(async (response) => {
-    if (!response?.credential) {
-      setError('Google Sign-In was cancelled')
-      return
-    }
-
-    setLoading(true)
-    setError('')
-
-    try {
-      const res = await axios.post('/users/google-auth', {
-        credential: response.credential,
-      })
-
-      // Use the same token storage mechanism as existing login
-      localStorage.setItem('token', res.data.token)
-      setUser(res.data.user)
-      toast.success('Signed in with Google!')
-
-      // Handle pending invite redirect (same as existing login flow)
-      const pendingInvite = sessionStorage.getItem('pendingInviteToken')
-      if (pendingInvite) {
-        sessionStorage.removeItem('pendingInviteToken')
-        navigate(`/invite/${pendingInvite}`)
-      } else {
-        navigate('/home')
+  const handleCredentialResponse = useCallback(
+    async (response) => {
+      if (!response?.credential) {
+        setError('Google Sign-In was cancelled')
+        return
       }
-    } catch (err) {
-      const msg =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        (typeof err.response?.data === 'string' ? err.response.data : null) ||
-        'Google Sign-In failed. Please try again.'
-      setError(msg)
-      toast.error(msg)
-    } finally {
-      setLoading(false)
-    }
-  }, [setUser, navigate])
 
-  // ── Initialize the Google client once the script is ready ─────────────────
+      setLoading(true)
+      setError('')
+
+      try {
+        const res = await axios.post('/users/google-auth', {
+          credential: response.credential,
+        })
+
+        localStorage.setItem('token', res.data.token)
+        setUser(res.data.user)
+        toast.success('Signed in with Google!')
+
+        const pendingInvite = sessionStorage.getItem('pendingInviteToken')
+        if (pendingInvite) {
+          sessionStorage.removeItem('pendingInviteToken')
+          navigate(`/invite/${pendingInvite}`)
+        } else {
+          navigate('/home')
+        }
+      } catch (err) {
+        const msg =
+          err.response?.data?.message ||
+          err.response?.data?.error ||
+          (typeof err.response?.data === 'string' ? err.response.data : null) ||
+          'Google Sign-In failed. Please try again.'
+        setError(msg)
+        toast.error(msg)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [setUser, navigate]
+  )
+
+  // ── Initialize GIS & Render Button ─────────────────────────────────────────
   useEffect(() => {
-    if (!scriptReady || !GOOGLE_CLIENT_ID || initializedRef.current) return
+    if (!scriptReady || !GOOGLE_CLIENT_ID) return
     if (!window.google?.accounts?.id) return
-
-    initializedRef.current = true
 
     window.google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
@@ -113,27 +112,22 @@ export default function useGoogleAuth() {
       cancel_on_tap_outside: true,
     })
 
-    // Pre-render a hidden button for seamless popup triggering
-    let hiddenBtn = document.getElementById('g_id_hidden_btn')
-    if (!hiddenBtn) {
-      hiddenBtn = document.createElement('div')
-      hiddenBtn.id = 'g_id_hidden_btn'
-      hiddenBtn.style.position = 'fixed'
-      hiddenBtn.style.top = '-9999px'
-      hiddenBtn.style.left = '-9999px'
-      hiddenBtn.style.opacity = '0'
-      hiddenBtn.style.pointerEvents = 'none'
-      document.body.appendChild(hiddenBtn)
+    // If a button container ref is provided, render the official Google button into it
+    if (buttonContainerRef?.current) {
+      buttonContainerRef.current.innerHTML = ''
+      window.google.accounts.id.renderButton(buttonContainerRef.current, {
+        type: 'standard',
+        theme: 'filled_black',
+        size: 'large',
+        width: '100%',
+        text: 'continue_with',
+        shape: 'rectangular',
+        logo_alignment: 'left',
+      })
     }
+  }, [scriptReady, handleCredentialResponse, buttonContainerRef])
 
-    window.google.accounts.id.renderButton(hiddenBtn, {
-      type: 'standard',
-      theme: 'outline',
-      size: 'large',
-    })
-  }, [scriptReady, handleCredentialResponse])
-
-  // ── Trigger the Google One Tap / popup ─────────────────────────────────────
+  // ── Programmatic Fallback ──────────────────────────────────────────────────
   const triggerGoogleLogin = useCallback(() => {
     if (!GOOGLE_CLIENT_ID) {
       toast.error('Google Sign-In is not configured. Please check VITE_GOOGLE_CLIENT_ID.')
@@ -147,27 +141,17 @@ export default function useGoogleAuth() {
 
     setError('')
 
-    // Try triggering the rendered button click first (works reliably across all browsers)
-    const hiddenBtn = document.getElementById('g_id_hidden_btn')
-    const clickable =
-      hiddenBtn?.querySelector('div[role="button"]') ||
-      hiddenBtn?.querySelector('iframe')
-
-    if (clickable) {
-      clickable.click()
-    } else {
-      // Fallback to standard Google One Tap prompt
-      window.google.accounts.id.prompt((notification) => {
-        if (notification.isNotDisplayed()) {
-          const reason = notification.getNotDisplayedReason()
-          if (reason === 'opt_out_or_no_session') {
-            toast.error('Please ensure you are signed into Google in your browser.')
-          } else {
-            console.log('Google One Tap not displayed:', reason)
-          }
+    // Standard prompt
+    window.google.accounts.id.prompt((notification) => {
+      if (notification.isNotDisplayed()) {
+        const reason = notification.getNotDisplayedReason()
+        if (reason === 'opt_out_or_no_session') {
+          toast.error('Please make sure you are signed in to Google.')
+        } else {
+          console.log('Google One Tap not displayed:', reason)
         }
-      })
-    }
+      }
+    })
   }, [])
 
   return {

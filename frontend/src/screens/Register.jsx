@@ -103,8 +103,8 @@ const Register = () => {
   const [passwordTouched, setPasswordTouched] = useState(false)
   const [agreeTerms, setAgreeTerms] = useState(false)
   const [formError, setFormError] = useState('')
-
-  const { triggerGoogleLogin, loading: googleLoading, error: googleError } = useGoogleAuth()
+  const googleBtnRef = useRef(null)
+  const { loading: googleLoading, error: googleError } = useGoogleAuth(googleBtnRef)
 
   const { setUser } = useContext(UserContext)
   const navigate = useNavigate()
@@ -350,39 +350,12 @@ const Register = () => {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
+            className="w-full flex justify-center"
           >
-            <button
-              type="button"
-              onClick={triggerGoogleLogin}
-              disabled={isAnyLoading}
-              className="w-full h-[44px] rounded-[12px] flex items-center justify-center gap-3 text-[14px] font-[600] transition-all duration-150 cursor-pointer"
-              style={{
-                background: 'var(--nc-surface)',
-                border: '1px solid var(--nc-border)',
-                color: 'var(--nc-text-primary)',
-                opacity: isAnyLoading ? 0.6 : 1,
-              }}
-              onMouseEnter={(e) => {
-                if (!isAnyLoading) {
-                  e.currentTarget.style.background = 'var(--nc-elevated)'
-                  e.currentTarget.style.borderColor = 'var(--nc-text-muted)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'var(--nc-surface)'
-                e.currentTarget.style.borderColor = 'var(--nc-border)'
-              }}
-            >
-              {googleLoading ? (
-                <div
-                  className="w-[18px] h-[18px] rounded-full border-2 border-t-transparent animate-spin"
-                  style={{ borderColor: 'var(--nc-text-muted)', borderTopColor: 'transparent' }}
-                />
-              ) : (
-                <GoogleIcon size={18} />
-              )}
-              Continue with Google
-            </button>
+            <div
+              ref={googleBtnRef}
+              className="w-full min-h-[44px] flex justify-center items-center overflow-hidden rounded-[12px]"
+            />
           </motion.div>
 
           {/* Sign in link */}
