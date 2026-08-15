@@ -4,7 +4,11 @@ import toast from 'react-hot-toast'
 import axios from '../config/axios'
 import { UserContext } from '../context/user.context'
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
+// Fallback to configured Google Client ID if env variable is not injected during build
+const GOOGLE_CLIENT_ID =
+  import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+  '931307926069-ocaftvtmfaiiil49gkev35g28nti1vc0.apps.googleusercontent.com'
+
 const GIS_SCRIPT_SRC = 'https://accounts.google.com/gsi/client'
 
 /**
@@ -20,7 +24,6 @@ export default function useGoogleAuth() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [scriptReady, setScriptReady] = useState(false)
-  const clientRef = useRef(null)
   const initializedRef = useRef(false)
 
   const { setUser } = useContext(UserContext)
@@ -54,21 +57,6 @@ export default function useGoogleAuth() {
     }
     document.head.appendChild(script)
   }, [])
-
-  // ── Initialize the Google client once the script is ready ─────────────────
-  useEffect(() => {
-    if (!scriptReady || !GOOGLE_CLIENT_ID || initializedRef.current) return
-    if (!window.google?.accounts?.id) return
-
-    initializedRef.current = true
-
-    window.google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: handleCredentialResponse,
-      auto_select: false,
-      cancel_on_tap_outside: true,
-    })
-  }, [scriptReady])
 
   // ── Handle the Google credential response ─────────────────────────────────
   const handleCredentialResponse = useCallback(async (response) => {
@@ -111,42 +99,75 @@ export default function useGoogleAuth() {
     }
   }, [setUser, navigate])
 
+  // ── Initialize the Google client once the script is ready ─────────────────
+  useEffect(() => {
+    if (!scriptReady || !GOOGLE_CLIENT_ID || initializedRef.current) return
+    if (!window.google?.accounts?.id) return
+
+    initializedRef.current = true
+
+    window.google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: handleCredentialResponse,
+      auto_select: false,
+      cancel_on_tap_outside: true,
+    })
+
+    // Pre-render a hidden button for seamless popup triggering
+    let hiddenBtn = document.getElementById('g_id_hidden_btn')
+    if (!hiddenBtn) {
+      hiddenBtn = document.createElement('div')
+      hiddenBtn.id = 'g_id_hidden_btn'
+      hiddenBtn.style.position = 'fixed'
+      hiddenBtn.style.top = '-9999px'
+      hiddenBtn.style.left = '-9999px'
+      hiddenBtn.style.opacity = '0'
+      hiddenBtn.style.pointerEvents = 'none'
+      document.body.appendChild(hiddenBtn)
+    }
+
+    window.google.accounts.id.renderButton(hiddenBtn, {
+      type: 'standard',
+      theme: 'outline',
+      size: 'large',
+    })
+  }, [scriptReady, handleCredentialResponse])
+
   // ── Trigger the Google One Tap / popup ─────────────────────────────────────
   const triggerGoogleLogin = useCallback(() => {
     if (!GOOGLE_CLIENT_ID) {
-      toast.error('Google Sign-In is not configured')
+      toast.error('Google Sign-In is not configured. Please check VITE_GOOGLE_CLIENT_ID.')
       return
     }
 
     if (!window.google?.accounts?.id) {
-      toast.error('Google Sign-In is still loading. Please wait.')
+      toast.error('Google Sign-In is still loading. Please wait a moment.')
       return
     }
 
     setError('')
-    // Prompt the Google One Tap popup
-    window.google.accounts.id.prompt((notification) => {
-      if (notification.isNotDisplayed()) {
-        // Fallback: if One Tap is blocked (e.g. by browser), nothing we can do
-        // The user may need to use email/password
-        const reason = notification.getNotDisplayedReason()
-        if (reason === 'opt_out_or_no_session') {
-          setError('No Google session found. Please sign in to Google first.')
-          toast.error('No Google session found. Please sign in to Google first.')
-        } else if (reason === 'suppressed_by_user') {
-          // User previously dismissed, don't show error
-        } else {
-          console.log('Google One Tap not displayed:', reason)
+
+    // Try triggering the rendered button click first (works reliably across all browsers)
+    const hiddenBtn = document.getElementById('g_id_hidden_btn')
+    const clickable =
+      hiddenBtn?.querySelector('div[role="button"]') ||
+      hiddenBtn?.querySelector('iframe')
+
+    if (clickable) {
+      clickable.click()
+    } else {
+      // Fallback to standard Google One Tap prompt
+      window.google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed()) {
+          const reason = notification.getNotDisplayedReason()
+          if (reason === 'opt_out_or_no_session') {
+            toast.error('Please ensure you are signed into Google in your browser.')
+          } else {
+            console.log('Google One Tap not displayed:', reason)
+          }
         }
-      }
-      if (notification.isSkippedMoment()) {
-        // User closed the prompt
-        const reason = notification.getSkippedReason()
-        if (reason === 'user_cancel') {
-          // Intentional dismissal, no error needed
-        }
-      }
-    })
+      })
+    }
   }, [])
 
   return {
