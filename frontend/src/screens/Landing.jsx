@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import Button from '../components/ui/Button'
+import NeuraLogo from '../components/ui/NeuraLogo'
 
 // ============================================================================
 // VERCEL / LINEAR STYLE LANDING PAGE
@@ -75,11 +76,8 @@ const Landing = () => {
         }`}
       >
         <div className="max-w-[1280px] mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-[8px] bg-[var(--nc-primary)] flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
-              <i className="ri-sparkling-2-line text-[16px] text-[var(--nc-bg)]" />
-            </div>
-            <span className="font-[700] text-[15px] tracking-tight">NeuraChat</span>
+          <Link to="/" className="flex items-center gap-2 group" aria-label="NeuraChat Home">
+            <NeuraLogo size={32} showText animated />
           </Link>
 
           <nav className="hidden md:flex items-center gap-8 text-[14px] font-[500] text-[var(--nc-text-secondary)]">
@@ -309,9 +307,7 @@ const Landing = () => {
       <footer className="border-t border-[var(--nc-border)] bg-[var(--nc-surface)] py-12">
         <div className="max-w-[1280px] mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6 text-[14px] text-[var(--nc-text-secondary)]">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-[6px] bg-[var(--nc-text-secondary)] flex items-center justify-center opacity-80">
-              <i className="ri-sparkling-2-fill text-[var(--nc-bg)] text-[12px]" />
-            </div>
+            <NeuraLogo size={20} />
             <span className="font-[600]">NeuraChat © 2026</span>
           </div>
           <div className="flex gap-6 font-[500]">

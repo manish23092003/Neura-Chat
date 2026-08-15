@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react'
 import { Route, BrowserRouter, Routes } from 'react-router-dom'
 import SuspenseFallback from '../components/SuspenseFallback'
 import UserAuth from '../auth/UserAuth'
+import ErrorBoundary from '../components/ErrorBoundary'
 
 // Lazy load all screen components to enable code splitting.
 // Each screen is loaded on-demand when the user navigates to that route.
@@ -22,7 +23,7 @@ const AppRoutes = () => {
                     <Route path="/login"    element={<Login />} />
                     <Route path="/register" element={<Register />} />
                     <Route path="/home"     element={<UserAuth><Home /></UserAuth>} />
-                    <Route path="/project"  element={<UserAuth><Project /></UserAuth>} />
+                    <Route path="/project"  element={<UserAuth><ErrorBoundary><Project /></ErrorBoundary></UserAuth>} />
                     <Route path="/profile"  element={<UserAuth><Profile /></UserAuth>} />
                     <Route path="/invite/:token" element={<JoinProject />} />
                 </Routes>

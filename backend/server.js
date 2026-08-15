@@ -13,11 +13,18 @@ import { generateResult, extractFileContent } from './services/ai.service.js';
 const port = process.env.PORT || 3000;
 
 const server = http.createServer(app);
+const allowedOrigins = [
+    'https://neura-chat-omega.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL.replace(/\/$/, '')] : [])
+];
+
 const io = new Server(server, {
     cors: {
-        // Restrict to the frontend origin in production; fall back to wildcard in dev
-        origin: process.env.FRONTEND_URL || '*',
+        origin: allowedOrigins,
         methods: ['GET', 'POST'],
+        credentials: true,
     },
     // Enable compression for socket payloads
     perMessageDeflate: {
@@ -51,6 +58,34 @@ function isRateLimited(userId) {
     return false;
 }
 
+// Helper to sanitize AI generated file trees and reject directory traversal
+function sanitizeFileTree(tree) {
+    if (!tree || typeof tree !== 'object') return {};
+    const sanitized = {};
+    for (const key of Object.keys(tree)) {
+        if (!key || typeof key !== 'string') continue;
+        // Block path traversal and absolute paths
+        if (key.includes('..') || key.startsWith('/') || key.startsWith('\\') || key.includes(':')) {
+            console.warn(`[Security Alert] Blocked suspicious fileTree key: "${key}"`);
+            continue;
+        }
+        const node = tree[key];
+        if (node && node.file && typeof node.file.contents === 'string') {
+            sanitized[key] = {
+                file: {
+                    contents: node.file.contents
+                }
+            };
+        } else if (node && (node.directory || typeof node === 'object')) {
+            const subTree = node.directory || node;
+            sanitized[key] = {
+                directory: sanitizeFileTree(subTree)
+            };
+        }
+    }
+    return sanitized;
+}
+
 // ── Socket authentication middleware ──────────────────────────────────────────
 io.use(async (socket, next) => {
     try {
@@ -65,17 +100,82 @@ io.use(async (socket, next) => {
 
         socket.project = await projectModel.findById(projectId);
         if (!socket.project) return next(new Error('Project not found'));
-        if (!token)          return next(new Error('Authentication error'));
+        if (!token)          return next(new Error('Authentication error: Missing token'));
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        if (!decoded)        return next(new Error('Authentication error'));
+        if (!decoded || !decoded.email) return next(new Error('Authentication error: Invalid token'));
 
-        socket.user = decoded;
+        // Look up the database user and verify project membership
+        const userDoc = await mongoose.model('user').findOne({ email: decoded.email });
+        if (!userDoc) {
+            return next(new Error('Authentication error: User account not found'));
+        }
+
+        const isMember = socket.project.users.some(u => u.toString() === userDoc._id.toString());
+        if (!isMember) {
+            console.warn(`[Security Alert] Unauthorized socket access attempt: User ${userDoc.email} -> Project ${projectId}`);
+            return next(new Error('Forbidden: You are not an authorized member of this project'));
+        }
+
+        socket.user = {
+            _id: userDoc._id.toString(),
+            email: userDoc.email,
+            name: userDoc.name || ''
+        };
         next();
     } catch (error) {
         next(error);
     }
 });
+
+// Helper to recursively traverse and format the workspace files and contents as text
+function getWorkspaceContextText(tree, currentPath = '') {
+    let contextText = '';
+    if (!tree || typeof tree !== 'object') return contextText;
+    for (const key of Object.keys(tree)) {
+        const node = tree[key];
+        const newPath = currentPath ? `${currentPath}/${key}` : key;
+        if (node && node.file) {
+            contextText += `\n--- File: ${newPath} ---\n${node.file.contents || ''}\n`;
+        } else if (node) {
+            const subTree = node.directory || node;
+            contextText += getWorkspaceContextText(subTree, newPath);
+        }
+    }
+    return contextText;
+}
+
+// Enhance user prompt with current project's workspace files
+async function enhancePromptWithWorkspace(projectId, workspaceId, prompt, clientFileTree = null) {
+    try {
+        let treeToUse = clientFileTree;
+        if (workspaceId) {
+            // Strictly fetch fileTree belonging ONLY to this specific workspaceId
+            const dbProject = await projectModel.findById(projectId);
+            if (dbProject && dbProject.workspaces && dbProject.workspaces.length > 0) {
+                const wsDoc = dbProject.workspaces.find(w => w._id === workspaceId);
+                if (wsDoc && wsDoc.fileTree && Object.keys(wsDoc.fileTree).length > 0) {
+                    treeToUse = wsDoc.fileTree;
+                } else if (!clientFileTree) {
+                    treeToUse = {};
+                }
+            }
+        } else if (!treeToUse || Object.keys(treeToUse).length === 0) {
+            const dbProject = await projectModel.findById(projectId);
+            if (dbProject) {
+                treeToUse = dbProject.fileTree;
+            }
+        }
+
+        if (treeToUse && Object.keys(treeToUse).length > 0) {
+            const workspaceFilesText = getWorkspaceContextText(treeToUse);
+            return `Current Workspace Files:\n${workspaceFilesText}\n\nUser request: ${prompt}\n\nTask: Fulfill the user request and output the updated/new workspace files in the standard JSON format.`;
+        }
+    } catch (err) {
+        console.error('[AI Context] Failed to load project fileTree:', err.message);
+    }
+    return prompt;
+}
 
 // ── Connection handler ────────────────────────────────────────────────────────
 io.on('connection', (socket) => {
@@ -89,6 +189,8 @@ io.on('connection', (socket) => {
     // ── Project message ─────────────────────────────────────────────────────
     socket.on('project-message', async (data) => {
         const messageText = data.message || '';
+        const workspaceId = data.workspaceId || '';
+        const workspaceFileTree = data.workspaceFileTree || null;
 
         // Persist user message
         try {
@@ -116,6 +218,7 @@ io.on('connection', (socket) => {
                 _id: crypto.randomUUID(),
                 message: JSON.stringify({ text: '⚠️ Rate limit reached. Please wait before sending more AI requests (max 10/minute).' }),
                 sender: { _id: 'ai', email: 'AI' },
+                workspaceId,
                 timestamp: new Date().toISOString(),
                 reactions: [],
             });
@@ -142,11 +245,48 @@ io.on('connection', (socket) => {
                     }
                 }
 
-                const result = await generateResult(prompt, fileContext);
+                const enhancedPrompt = await enhancePromptWithWorkspace(socket.roomId, workspaceId, prompt, workspaceFileTree);
+                const result = await generateResult(enhancedPrompt, fileContext, workspaceId);
+
+                // Auto-persist AI generated fileTree to MongoDB workspace subdocument
+                try {
+                    let cleaned = (result || '').trim();
+                    if (cleaned.startsWith('```json')) cleaned = cleaned.slice(7);
+                    else if (cleaned.startsWith('```')) cleaned = cleaned.slice(3);
+                    if (cleaned.endsWith('```')) cleaned = cleaned.slice(0, -3);
+                    const parsed = JSON.parse(cleaned.trim());
+                    if (parsed.fileTree && workspaceId) {
+                        const safeTree = sanitizeFileTree(parsed.fileTree);
+                        const updateRes = await projectModel.updateOne(
+                            { _id: socket.roomId, "workspaces._id": workspaceId },
+                            { $set: { "workspaces.$.fileTree": safeTree, "workspaces.$.updatedAt": new Date() } }
+                        );
+                        if (updateRes.matchedCount === 0) {
+                            await projectModel.updateOne(
+                                { _id: socket.roomId },
+                                {
+                                    $push: {
+                                        workspaces: {
+                                            _id: workspaceId,
+                                            name: 'Workspace',
+                                            fileTree: safeTree,
+                                            createdAt: new Date(),
+                                            updatedAt: new Date(),
+                                            isPinned: false,
+                                            isArchived: false,
+                                        }
+                                    }
+                                }
+                            );
+                        }
+                    }
+                } catch (_) { /* non-JSON output */ }
+
                 const aiMsg = {
                     _id: crypto.randomUUID(),
                     message: result,
                     sender: { _id: 'ai', email: 'AI' },
+                    workspaceId,
                     timestamp: new Date().toISOString(),
                     reactions: [],
                 };
@@ -169,6 +309,7 @@ io.on('connection', (socket) => {
                     _id: crypto.randomUUID(),
                     message: JSON.stringify({ text: `AI request failed: ${err.message}` }),
                     sender: { _id: 'ai', email: 'AI' },
+                    workspaceId,
                     timestamp: new Date().toISOString(),
                     reactions: [],
                 });
@@ -186,6 +327,9 @@ io.on('connection', (socket) => {
 
     // ── File message ────────────────────────────────────────────────────────
     socket.on('project-file-message', async (data) => {
+        const workspaceId = data.workspaceId || '';
+        const workspaceFileTree = data.workspaceFileTree || null;
+
         // Persist file message
         try {
             await messageModel.create({
@@ -226,11 +370,13 @@ io.on('connection', (socket) => {
                     }
                 }
 
-                const result = await generateResult(prompt, fileContext);
+                const enhancedPrompt = await enhancePromptWithWorkspace(socket.roomId, workspaceId, prompt, workspaceFileTree);
+                const result = await generateResult(enhancedPrompt, fileContext, workspaceId);
                 const aiMsg = {
                     _id: crypto.randomUUID(),
                     message: result,
                     sender: { _id: 'ai', email: 'AI' },
+                    workspaceId,
                     timestamp: new Date().toISOString(),
                     reactions: [],
                 };
@@ -253,6 +399,7 @@ io.on('connection', (socket) => {
                     _id: crypto.randomUUID(),
                     message: JSON.stringify({ text: `AI file analysis failed: ${err.message}` }),
                     sender: { _id: 'ai', email: 'AI' },
+                    workspaceId,
                     timestamp: new Date().toISOString(),
                     reactions: [],
                 });

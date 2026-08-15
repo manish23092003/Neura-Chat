@@ -1,5 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
+import NeuraLogo from './ui/NeuraLogo'
 
 const Footer = () => {
     return (
@@ -9,10 +10,7 @@ const Footer = () => {
                     {/* Brand */}
                     <div className="col-span-1 md:col-span-2">
                         <div className="flex items-center gap-2 mb-4">
-                            <div className="w-10 h-10 rounded-xl bg-[var(--nc-primary)] flex items-center justify-center shadow-lg">
-                                <i className="ri-brain-line text-white text-xl"></i>
-                            </div>
-                            <span className="text-xl font-bold text-white">NeuraChat</span>
+                            <NeuraLogo size={36} showText animated />
                         </div>
                         <p className="text-slate-400 mb-4 max-w-md">
                             AI-powered collaborative development platform. Build better software together with intelligent code collaboration.

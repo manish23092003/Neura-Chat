@@ -4,6 +4,7 @@ import { useContext } from 'react'
 import { UserContext } from '../../context/user.context'
 import Avatar from './Avatar'
 import Dropdown from './Dropdown'
+import NeuraLogo from './NeuraLogo'
 
 /**
  * Header — 56px sticky top navbar
@@ -94,20 +95,7 @@ const Header = ({ onMenuToggle, showMenuButton = false }) => {
           className="flex items-center gap-2.5 flex-shrink-0 group"
           aria-label="NeuraChat home"
         >
-          <div
-            className="w-8 h-8 rounded-[8px] flex items-center justify-center flex-shrink-0 overflow-hidden"
-            style={{
-              backgroundColor: 'transparent',
-            }}
-          >
-            <img src="/favicon.png" alt="NeuraChat Logo" className="w-full h-full object-cover" />
-          </div>
-          <span
-            className="hidden sm:block text-[15px] font-[700] tracking-tight"
-            style={{ color: 'var(--nc-text-primary)' }}
-          >
-            NeuraChat
-          </span>
+          <NeuraLogo size={28} showText animated />
         </button>
 
         {/* Divider */}
@@ -159,14 +147,9 @@ const Header = ({ onMenuToggle, showMenuButton = false }) => {
                   aria-label="User menu"
                 >
                   <Avatar email={user.email} name={user.name} size="sm" />
-                  <div className="hidden md:flex flex-col items-start leading-none">
-                    <span className="text-[13px] font-[600] text-[var(--nc-text-primary)]">
-                      {user.name || user.email?.split('@')[0] || 'User'}
-                    </span>
-                    <span className="text-[11px] truncate max-w-[100px]" style={{ color: 'var(--nc-text-muted)' }}>
-                      {user.email}
-                    </span>
-                  </div>
+                  <span className="hidden md:block text-[13px] font-[600] text-[var(--nc-text-primary)]">
+                    {user.name || user.email?.split('@')[0] || 'User'}
+                  </span>
                   <i className="ri-arrow-down-s-line text-[14px] hidden md:block" style={{ color: 'var(--nc-text-muted)' }} />
                 </button>
               }

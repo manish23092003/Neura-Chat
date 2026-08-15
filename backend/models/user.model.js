@@ -41,6 +41,12 @@ const userSchema = new mongoose.Schema({
         accessToken: { type: String, default: null },
         username: { type: String, default: null },
         id: { type: String, default: null }
+    },
+    google: {
+        id: { type: String, default: null },
+        email: { type: String, default: null },
+        name: { type: String, default: null },
+        avatar: { type: String, default: null }
     }
 })
 

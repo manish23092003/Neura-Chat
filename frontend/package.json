@@ -14,7 +14,7 @@
     "@webcontainer/api": "^1.5.1-internal.4",
     "axios": "^1.7.9",
     "framer-motion": "^12.23.26",
-    "highlight.js": "^11.11.0",
+    "@monaco-editor/react": "^4.6.0",
     "jszip": "^3.10.1",
     "lucide-react": "^1.25.0",
     "markdown-to-jsx": "^7.7.1",

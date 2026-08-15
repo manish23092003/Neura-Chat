@@ -208,7 +208,7 @@ export const respondToInvitation = async ({ projectId, userId, accept, role }) =
     return updatedProject;
 }
 
-export const getProjectById = async ({ projectId }) => {
+export const getProjectById = async ({ projectId, userId }) => {
     if (!projectId) {
         throw new Error("projectId is required")
     }
@@ -217,14 +217,22 @@ export const getProjectById = async ({ projectId }) => {
         throw new Error("Invalid projectId")
     }
 
-    const project = await projectModel.findOne({
-        _id: projectId
-    }).populate('users')
+    const query = { _id: projectId }
+    if (userId) {
+        query.users = userId
+    }
+
+    const project = await projectModel.findOne(query).populate('users')
+    if (!project) {
+        const error = new Error("Project not found or unauthorized")
+        error.statusCode = 404
+        throw error
+    }
 
     return project;
 }
 
-export const updateFileTree = async ({ projectId, fileTree }) => {
+export const updateFileTree = async ({ projectId, fileTree, workspaceId, userId }) => {
     if (!projectId) {
         throw new Error("projectId is required")
     }
@@ -237,21 +245,61 @@ export const updateFileTree = async ({ projectId, fileTree }) => {
         throw new Error("fileTree is required")
     }
 
+    // Verify user membership before performing any write operations
+    if (userId) {
+        const isMember = await projectModel.findOne({ _id: projectId, users: userId });
+        if (!isMember) {
+            const error = new Error("Project not found or unauthorized");
+            error.statusCode = 404;
+            throw error;
+        }
+    }
+
     // Load existing project to get the old file tree
     const existingProject = await projectModel.findById(projectId);
     const oldFileTree = existingProject ? (existingProject.fileTree || {}) : {};
 
-    const project = await projectModel.findOneAndUpdate({
-        _id: projectId
-    }, {
-        fileTree
-    }, {
-        new: true
-    });
+    let project;
 
-    // If linked to GitHub, perform background sync
-    if (project.githubRepoName) {
-        const projectUsers = await userModel.find({ _id: { $in: project.users } });
+    if (workspaceId) {
+        // Try updating existing workspace subdocument in MongoDB
+        const updateRes = await projectModel.updateOne(
+            { _id: projectId, "workspaces._id": workspaceId },
+            { $set: { "workspaces.$.fileTree": fileTree, "workspaces.$.updatedAt": new Date() } }
+        );
+
+        // If workspace was not found in array yet, add it
+        if (updateRes.matchedCount === 0) {
+            await projectModel.updateOne(
+                { _id: projectId },
+                {
+                    $push: {
+                        workspaces: {
+                            _id: workspaceId,
+                            name: 'Workspace',
+                            fileTree,
+                            createdAt: new Date(),
+                            updatedAt: new Date(),
+                            isPinned: false,
+                            isArchived: false,
+                        }
+                    }
+                }
+            );
+        }
+        project = await projectModel.findById(projectId);
+    } else {
+        project = await projectModel.findOneAndUpdate({
+            _id: projectId
+        }, {
+            $set: { fileTree }
+        }, {
+            new: true
+        });
+    }
+
+    if (project && project.githubRepoName && project.githubSyncStatus !== 'disabled') {
+        const projectUsers = project.users || [];
         const userWithGit = projectUsers.find(u => u.github && u.github.accessToken);
         
         if (userWithGit) {

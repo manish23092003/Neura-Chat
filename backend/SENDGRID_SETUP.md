@@ -159,3 +159,4 @@ Once configured, your password reset emails will:
 - ✅ Expire after 1 hour for security
 
 **Need help?** Let me know if you get stuck on any step!
+

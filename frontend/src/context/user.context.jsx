@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import axios from '../config/axios';
 
 // Create the UserContext
 export const UserContext = createContext();
@@ -14,11 +14,7 @@ export const UserProvider = ({ children }) => {
 
         if (token) {
             // Verify token and get user data
-            axios.get(`${import.meta.env.VITE_API_URL}/users/profile`, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            })
+            axios.get('/users/profile')
                 .then((res) => {
                     setUser(res.data.user);
                 })

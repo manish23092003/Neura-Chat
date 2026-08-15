@@ -56,7 +56,8 @@ const CACHE_MAX    = 100
 
 const responseCache = new Map()
 
-const getCacheKey = (prompt) => createHash('sha256').update(prompt).digest('hex')
+const getCacheKey = (prompt, workspaceId = '') => 
+    createHash('sha256').update(`${workspaceId}:${prompt}`).digest('hex')
 
 const cacheGet = (key) => {
     const entry = responseCache.get(key)
@@ -139,13 +140,14 @@ export const extractFileContent = async (filePathOrBuffer, originalName = null, 
 // ── Main generation function ───────────────────────────────────────────────
 /**
  * Generate an AI response for the given prompt.
- * Results are cached by prompt hash for 10 minutes to avoid duplicate API calls.
+ * Results are cached by workspace & prompt hash for 10 minutes to avoid duplicate API calls.
  *
  * @param {string} prompt         - User's prompt text
  * @param {object|null} fileContext - Optional file context from extractFileContent()
+ * @param {string|null} workspaceId - Optional workspace identifier for cache isolation
  * @returns {Promise<string>}     - Raw AI response string (JSON)
  */
-export const generateResult = async (prompt, fileContext = null) => {
+export const generateResult = async (prompt, fileContext = null, workspaceId = '') => {
     // Build the full prompt including any file context
     let fullPrompt = prompt.trim()
 
@@ -157,7 +159,7 @@ export const generateResult = async (prompt, fileContext = null) => {
     }
 
     // Check cache before making API call
-    const cacheKey = getCacheKey(fullPrompt)
+    const cacheKey = getCacheKey(fullPrompt, workspaceId)
     const cached = cacheGet(cacheKey)
     if (cached) {
         console.info(`[AI Cache] Hit for key ${cacheKey.slice(0, 8)}…`)

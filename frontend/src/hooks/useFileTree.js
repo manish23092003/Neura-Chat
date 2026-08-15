@@ -1,8 +1,26 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import axios from '../config/axios'
 import { debounce } from '../utils/performance'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Recursively normalize an AI-generated file tree to the canonical format:
+ * { "name": { file: { contents: "..." } } }  or
+ * { "name": { directory: { ... } } }
+ */
+/**
+ * Check if a file tree node represents a directory.
+ */
+export const isDirectoryNode = (node) => {
+    if (!node || typeof node !== 'object') return false
+    if (node.file || node.contents !== undefined) return false
+    if (node.directory || node.type === 'directory' || node.children) return true
+    // If object has no file or contents field, but is an object, check if keys resemble direct files vs folders
+    const keys = Object.keys(node)
+    if (keys.length === 0) return true
+    return !keys.some(k => k === 'contents' || k === 'file')
+}
 
 /**
  * Recursively normalize an AI-generated file tree to the canonical format:
@@ -14,14 +32,22 @@ export const normalizeFileTree = (tree) => {
     const normalized = {}
     for (const key of Object.keys(tree)) {
         const node = tree[key]
-        if (!node || typeof node !== 'object') continue
-        if (node.file) {
-            normalized[key] = { file: node.file }
-        } else if (node.type === 'directory' || node.children || node.directory) {
-            const children = node.children || node.directory || {}
-            normalized[key] = { directory: normalizeFileTree(children) }
-        } else {
-            normalized[key] = { directory: normalizeFileTree(node) }
+        if (!node) continue
+        if (typeof node === 'string') {
+            normalized[key] = { file: { contents: node } }
+        } else if (typeof node === 'object') {
+            if (node.file) {
+                normalized[key] = { file: node.file }
+            } else if (node.contents !== undefined) {
+                normalized[key] = { file: { contents: node.contents } }
+            } else if (node.type === 'directory' || node.children || node.directory) {
+                const children = node.children || node.directory || {}
+                normalized[key] = { directory: normalizeFileTree(children) }
+            } else if (!isDirectoryNode(node)) {
+                normalized[key] = { file: { contents: node.contents ?? node.file?.contents ?? '' } }
+            } else {
+                normalized[key] = { directory: normalizeFileTree(node) }
+            }
         }
     }
     return normalized
@@ -40,7 +66,7 @@ export const mergeFileTrees = (existing, incoming) => {
         const ext = existing[key]
         if (!ext) {
             merged[key] = inc
-        } else if (inc.file && ext.file) {
+        } else if ((inc.file || inc.contents !== undefined) && (ext.file || ext.contents !== undefined)) {
             merged[key] = inc // incoming wins
         } else if (inc.directory && ext.directory) {
             merged[key] = { directory: mergeFileTrees(ext.directory, inc.directory) }
@@ -62,7 +88,11 @@ export const getFileByPath = (tree, pathStr) => {
         if (!current) return null
         current = current.directory ? current.directory[segment] : current[segment]
     }
-    return current?.file ? current : null
+    if (!current) return null
+    if (current.file) return current
+    if (current.contents !== undefined) return { file: { contents: current.contents } }
+    if (typeof current === 'string') return { file: { contents: current } }
+    return null
 }
 
 /**
@@ -100,7 +130,7 @@ export const getAllFilePaths = (node, path = '', acc = []) => {
     for (const key of Object.keys(node)) {
         const child = node[key]
         const currentPath = path ? `${path}/${key}` : key
-        const isDir = !!(child.directory || (!child.file && typeof child === 'object'))
+        const isDir = isDirectoryNode(child)
         const next = child.directory || (isDir ? child : null)
         if (isDir) {
             if (next) getAllFilePaths(next, currentPath, acc)
@@ -143,24 +173,31 @@ export const deleteFileFromTree = (tree, pathStr) => {
  * @param {string} projectId   — used for API calls
  * @param {Function} onProjectUpdate — called with updated project object after save
  */
-const useFileTree = (initialTree, projectId, onProjectUpdate) => {
-    const [fileTree, setFileTreeState] = useState(initialTree || {})
-    // Keep a ref in sync for use inside socket/event handlers without stale closure
+const useFileTree = (initialTree, projectId, onProjectUpdate, onWorkspaceSync, workspaceId) => {
+    const [fileTree, setFileTreeState] = useState(() => (initialTree ? structuredClone(initialTree) : {}))
     const fileTreeRef = useRef(fileTree)
+    const activeWsIdRef = useRef(workspaceId)
+    const onWorkspaceSyncRef = useRef(onWorkspaceSync)
+    const onProjectUpdateRef = useRef(onProjectUpdate)
+
+    useEffect(() => {
+        onWorkspaceSyncRef.current = onWorkspaceSync
+        onProjectUpdateRef.current = onProjectUpdate
+    }, [onWorkspaceSync, onProjectUpdate])
 
     // Debounced save — waits 600ms after the last change before hitting the API
     const debouncedSave = useRef(
-        debounce(async (tree, pid) => {
+        debounce(async (tree, pid, wsId) => {
             try {
                 const res = await axios.put('/projects/update-file-tree', {
                     projectId: pid,
+                    workspaceId: wsId,
                     fileTree: tree,
                 })
                 if (res.data?.project) {
-                    onProjectUpdate?.(res.data.project)
+                    onProjectUpdateRef.current?.(res.data.project)
                 }
             } catch (err) {
-                // Non-fatal — local state is already updated; just log
                 if (import.meta.env.DEV) {
                     console.warn('[useFileTree] save failed:', err.message)
                 }
@@ -168,14 +205,41 @@ const useFileTree = (initialTree, projectId, onProjectUpdate) => {
         }, 600)
     ).current
 
+    // Whenever workspaceId changes, cancel pending save and immediately load that workspace's tree
+    const currentWorkspaceIdRef = useRef(workspaceId)
+    useEffect(() => {
+        debouncedSave?.cancel?.()
+        activeWsIdRef.current = workspaceId
+        currentWorkspaceIdRef.current = workspaceId
+        const cloned = initialTree ? structuredClone(initialTree) : {}
+        setFileTreeState(cloned)
+        fileTreeRef.current = cloned
+    }, [workspaceId]) // Triggers on workspace switch
+
+    // When initialTree updates externally for the ACTIVE workspace
+    const prevTreeJsonRef = useRef('')
+    useEffect(() => {
+        if (initialTree && typeof initialTree === 'object') {
+            const json = JSON.stringify(initialTree)
+            if (json !== prevTreeJsonRef.current) {
+                prevTreeJsonRef.current = json
+                const cloned = structuredClone(initialTree)
+                setFileTreeState(cloned)
+                fileTreeRef.current = cloned
+            }
+        }
+    }, [initialTree])
+
     /**
-     * Update the file tree in state and schedule a debounced save to the DB.
+     * Update the file tree in state and schedule a debounced save to the DB & IndexedDB.
      */
     const setFileTree = useCallback((updater) => {
         setFileTreeState((prev) => {
             const next = typeof updater === 'function' ? updater(prev) : updater
             fileTreeRef.current = next
-            debouncedSave(next, projectId)
+            const targetWsId = activeWsIdRef.current
+            debouncedSave(next, projectId, targetWsId)
+            onWorkspaceSyncRef.current?.(next, targetWsId)
             return next
         })
     }, [projectId, debouncedSave])
@@ -186,15 +250,17 @@ const useFileTree = (initialTree, projectId, onProjectUpdate) => {
     const saveNow = useCallback((tree) => {
         const t = tree ?? fileTreeRef.current
         debouncedSave.cancel()
+        const targetWsId = activeWsIdRef.current
         axios.put('/projects/update-file-tree', {
             projectId,
+            workspaceId: targetWsId,
             fileTree: t,
         }).then(res => {
-            if (res.data?.project) onProjectUpdate?.(res.data.project)
+            if (res.data?.project) onProjectUpdateRef.current?.(res.data.project)
         }).catch(err => {
             if (import.meta.env.DEV) console.warn('[useFileTree] saveNow failed:', err.message)
         })
-    }, [projectId, onProjectUpdate, debouncedSave])
+    }, [projectId, debouncedSave])
 
     /**
      * Write new contents to an existing file and persist.

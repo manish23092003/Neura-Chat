@@ -122,5 +122,20 @@ router.post('/invite/join',
     projectController.joinByInvite
 )
 
+// ── Workspace Metadata Routes ────────────────────────────────────────────────
+router.post('/:projectId/workspaces',
+    authMiddleWare.authUser,
+    projectController.createWorkspaceMetadata
+)
+
+router.put('/:projectId/workspaces/:workspaceId',
+    authMiddleWare.authUser,
+    projectController.updateWorkspaceMetadata
+)
+
+router.delete('/:projectId/workspaces/:workspaceId',
+    authMiddleWare.authUser,
+    projectController.deleteWorkspaceMetadata
+)
 
 export default router;

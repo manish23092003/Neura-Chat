@@ -76,6 +76,18 @@ const projectSchema = new mongoose.Schema({
         type: Object,
         default: {}
     },
+    workspaces: [
+        {
+            _id: String,
+            name: String,
+            framework: String,
+            fileTree: { type: Object, default: {} },
+            createdAt: { type: Date, default: Date.now },
+            updatedAt: { type: Date, default: Date.now },
+            isPinned: { type: Boolean, default: false },
+            isArchived: { type: Boolean, default: false }
+        }
+    ],
     inviteToken: {
         type: String,
         default: null,

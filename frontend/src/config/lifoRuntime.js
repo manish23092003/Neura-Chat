@@ -57,7 +57,9 @@ export const flattenFileTree = (tree, currentPath = '') => {
     const item = tree[key];
     const itemPath = currentPath ? `${currentPath}/${key}` : key;
     if (!item) continue;
-    if (item.file) {
+    if (typeof item === 'string') {
+      result.push({ path: itemPath, content: item });
+    } else if (item.file) {
       result.push({ path: itemPath, content: item.file.contents ?? '' });
     } else if (item.directory) {
       result.push(...flattenFileTree(item.directory, itemPath));
@@ -94,6 +96,28 @@ const syncFilesToSandbox = async (sandbox, fileTree) => {
   }
 };
 
+/** Find best JavaScript / TypeScript entry point file from file list. */
+export const findJsEntryPoint = (files, pkg) => {
+  if (pkg?.main && files.some(f => f.path === pkg.main)) return pkg.main;
+  if (pkg?.scripts?.start) {
+    const match = pkg.scripts.start.match(/node\s+([^\s]+)/);
+    if (match && files.some(f => f.path === match[1])) return match[1];
+  }
+  const candidates = [
+    'index.js', 'main.js', 'app.js', 'server.js', 'hello.js',
+    'index.mjs', 'index.cjs', 'index.ts', 'main.ts', 'app.ts',
+    'src/index.js', 'src/main.js', 'src/app.js', 'src/index.ts', 'src/main.ts'
+  ];
+  for (const cand of candidates) {
+    if (files.some(f => f.path === cand)) return cand;
+  }
+  const firstJs = files.find(f =>
+    f.path.endsWith('.js') || f.path.endsWith('.ts') ||
+    f.path.endsWith('.mjs') || f.path.endsWith('.cjs')
+  );
+  return firstJs ? firstJs.path : 'index.js';
+};
+
 /** Detect project type. */
 export const detectProjectType = (fileTree) => {
   const files = flattenFileTree(fileTree);
@@ -111,11 +135,22 @@ export const detectProjectType = (fileTree) => {
 
   if (allDeps['vite'] || allDeps['react'] || paths.some(p => p.endsWith('.jsx') || p.endsWith('.tsx') || p.includes('vite.config')))
     return { type: 'react_vite', pkg };
-  if (allDeps['express'] || paths.some(p => p === 'server.js' || p === 'app.js'))
+  
+  // Express check: only if express is explicitly in dependencies or file imports express
+  const hasExpressImport = files.some(f => 
+    (f.path.endsWith('.js') || f.path.endsWith('.ts')) &&
+    (f.content.includes("require('express')") || f.content.includes('require("express")') || f.content.includes('from "express"') || f.content.includes("from 'express'"))
+  );
+  if (allDeps['express'] || hasExpressImport)
     return { type: 'express', pkg };
+
+  if (paths.some(p => p.endsWith('.java')))
+    return { type: 'java', pkg };
+  if (paths.some(p => p.endsWith('.py')))
+    return { type: 'python', pkg };
   if (paths.some(p => p === 'index.html' || p.endsWith('.html')))
     return { type: 'static_html', pkg };
-  if (paths.some(p => p === 'index.js' || p.endsWith('.js') || p.endsWith('.ts')))
+  if (paths.some(p => p.endsWith('.js') || p.endsWith('.ts') || p.endsWith('.mjs') || p.endsWith('.cjs')))
     return { type: 'plain_js', pkg };
   return { type: 'empty', pkg };
 };
@@ -212,7 +247,8 @@ export const runLifoProject = async ({ sandbox, fileTree, onStatusChange, onLog 
       }
 
     } else if (info.type === 'express') {
-      const startCmd = info.pkg?.scripts?.start || 'node index.js';
+      const entryFile = findJsEntryPoint(files, info.pkg);
+      const startCmd = info.pkg?.scripts?.start || `node ${entryFile}`;
       onLog?.(`Running: ${startCmd}\n`);
       sandbox.commands.run(startCmd, {
         cwd: '/app',
@@ -229,17 +265,57 @@ export const runLifoProject = async ({ sandbox, fileTree, onStatusChange, onLog 
         previewUrl = blobUrl(buildServerStatusPage(startCmd, port));
       }
 
-    } else if (info.type === 'plain_js') {
-      const cmd = info.pkg?.scripts?.start || 'node index.js';
+    } else if (info.type === 'java') {
+      const javaFile = files.find(f => f.path.endsWith('.java'))
+      const javaFileName = javaFile ? javaFile.path.split('/').pop() : 'Main.java'
+      const className = javaFileName.replace('.java', '')
+
+      onLog?.(`Compiling & Executing Java: ${javaFileName}…\n`)
+      try {
+        const res = await sandbox.commands.run(`javac /app/${javaFileName} && java -cp /app ${className}`, {
+          cwd: '/app', timeout: 15000,
+          onStdout: d => onLog?.(d), onStderr: d => onLog?.(d),
+        })
+        onLog?.(`\nJava process completed with exit code ${res.exitCode}\n`)
+      } catch (e) {
+        onLog?.(`Java Execution Note: ${e.message || e}\n`)
+      }
+      previewUrl = blobUrl(buildNodeOutputPage());
+    } else if (info.type === 'python') {
+      const pyFile = files.find(f => f.path === 'main.py' || f.path === 'app.py') || files.find(f => f.path.endsWith('.py'));
+      const entryPy = pyFile ? pyFile.path : 'main.py';
+      const cmd = `python3 ${entryPy}`;
       onLog?.(`Running: ${cmd}\n`);
       try {
         const res = await sandbox.commands.run(cmd, {
           cwd: '/app', timeout: 15000,
           onStdout: d => onLog?.(d), onStderr: d => onLog?.(d),
         });
-        onLog?.(`\nExited with code ${res.exitCode}\n`);
+        if (res.exitCode === 0) {
+          onLog?.(`\n✓ Python script completed successfully (exit code 0)\n`);
+        } else {
+          onLog?.(`\n⚠ Python script exited with code ${res.exitCode}\n`);
+        }
       } catch (e) {
-        onLog?.(`${e.message || e}\n`);
+        onLog?.(`Python execution error: ${e.message || e}\n`);
+      }
+      previewUrl = blobUrl(buildNodeOutputPage());
+    } else if (info.type === 'plain_js') {
+      const entryFile = findJsEntryPoint(files, info.pkg);
+      const cmd = info.pkg?.scripts?.start || `node ${entryFile}`;
+      onLog?.(`Running: ${cmd}\n`);
+      try {
+        const res = await sandbox.commands.run(cmd, {
+          cwd: '/app', timeout: 15000,
+          onStdout: d => onLog?.(d), onStderr: d => onLog?.(d),
+        });
+        if (res.exitCode === 0) {
+          onLog?.(`\n✓ Program completed successfully (exit code 0)\n`);
+        } else {
+          onLog?.(`\n⚠ Program exited with code ${res.exitCode}\n`);
+        }
+      } catch (e) {
+        onLog?.(`Execution error: ${e.message || e}\n`);
       }
       previewUrl = blobUrl(buildNodeOutputPage());
     }

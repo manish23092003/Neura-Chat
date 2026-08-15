@@ -51,10 +51,10 @@ export default defineConfig(({ mode }) => ({
               id.includes('node_modules/engine.io-client/')) {
             return 'vendor-socket'
           }
-          // Syntax highlighting — split into separate chunk so it can be
-          // lazy-loaded only when the code editor is opened.
-          if (id.includes('node_modules/highlight.js/')) {
-            return 'vendor-hljs'
+          // Monaco Editor chunk
+          if (id.includes('node_modules/@monaco-editor/') ||
+              id.includes('node_modules/monaco-editor/')) {
+            return 'vendor-monaco'
           }
           // Utility libs (axios, jszip, markdown, lucide)
           if (id.includes('node_modules/axios/') ||

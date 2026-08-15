@@ -3,42 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion'
 import TaskItem from './TaskItem'
 import toast from 'react-hot-toast'
 
-const PRIORITY_COLORS = {
-    high: { dot: '#EF4444', label: 'High' },
-    medium: { dot: '#F59E0B', label: 'Medium' },
-    low: { dot: '#22C55E', label: 'Low' },
-}
-
-const StatCard = ({ label, value, icon, color, bg, border }) => (
-    <div
-        style={{
-            flex: 1,
-            padding: '10px 12px',
-            borderRadius: 12,
-            background: bg,
-            border: `1px solid ${border}`,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 4,
-        }}
-    >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--nc-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                {label}
-            </span>
-            <i className={icon} style={{ fontSize: 13, color }} />
-        </div>
-        <span style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1 }}>{value}</span>
-    </div>
-)
-
 const TaskList = ({ tasks = [], projectUsers = [], onCreateTask, onUpdateTask, onDeleteTask, onToggleTask }) => {
     const [newTaskTitle, setNewTaskTitle] = useState('')
     const [newTaskPriority, setNewTaskPriority] = useState('medium')
     const [newTaskAssignedTo, setNewTaskAssignedTo] = useState('')
     const [filter, setFilter] = useState('all')
     const [search, setSearch] = useState('')
-    const [sortBy, setSortBy] = useState('default') // 'default', 'priority', 'status'
+    const [sortBy, setSortBy] = useState('default')
     const [showAddForm, setShowAddForm] = useState(false)
     const titleInputRef = useRef(null)
 
@@ -68,14 +39,13 @@ const TaskList = ({ tasks = [], projectUsers = [], onCreateTask, onUpdateTask, o
         setTimeout(() => titleInputRef.current?.focus(), 60)
     }
 
-    // Stats
+    /* ── Stats ── */
     const totalTasks = tasks.length
     const completedTasks = tasks.filter(t => t.completed).length
-    const activeTasks = totalTasks - completedTasks
-    const highPriorityActive = tasks.filter(t => !t.completed && t.priority === 'high').length
+    const remainingTasks = totalTasks - completedTasks
     const pct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
-    // Filter + search + sort
+    /* ── Filter + Search + Sort ── */
     let filtered = tasks.filter(task => {
         if (filter === 'active') return !task.completed
         if (filter === 'completed') return task.completed
@@ -91,214 +61,133 @@ const TaskList = ({ tasks = [], projectUsers = [], onCreateTask, onUpdateTask, o
         filtered = [...filtered].sort((a, b) => Number(a.completed) - Number(b.completed))
     }
 
-    const filterTabs = [
-        { id: 'all', label: 'All', count: totalTasks },
-        { id: 'active', label: 'Active', count: activeTasks },
-        { id: 'completed', label: 'Done', count: completedTasks },
+    const filters = [
+        { id: 'all',       label: 'All',       count: totalTasks },
+        { id: 'active',    label: 'Active',    count: remainingTasks },
+        { id: 'completed', label: 'Completed', count: completedTasks },
     ]
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+        <div className="flex flex-col h-full overflow-hidden" style={{ background: '#0A0A0B', color: '#E8E8EA' }}>
 
-            {/* ── Header ── */}
-            <div style={{
-                padding: '16px 16px 0',
-                flexShrink: 0,
-                background: 'var(--nc-surface)',
-                borderBottom: '1px solid var(--nc-border)',
-                paddingBottom: 0,
-            }}>
-                {/* Title row */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{
-                            width: 30, height: 30, borderRadius: 9,
-                            background: 'var(--nc-primary-muted)',
-                            border: '1px solid var(--nc-primary-border)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
-                            <i className="ri-task-line" style={{ fontSize: 14, color: 'var(--nc-primary)' }} />
-                        </div>
-                        <div>
-                            <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--nc-text-primary)', margin: 0, lineHeight: 1 }}>
-                                Task Board
-                            </h2>
-                            <p style={{ fontSize: 11, color: 'var(--nc-text-muted)', margin: 0, marginTop: 2 }}>
-                                {activeTasks} remaining
-                            </p>
-                        </div>
-                    </div>
-
+            {/* ── Page Header ── */}
+            <div className="px-4 pt-4 pb-3 shrink-0">
+                <div className="flex items-center justify-between mb-1">
+                    <h2 className="text-[15px] font-semibold text-[#E8E8EA]">Tasks</h2>
                     <button
                         onClick={showAddForm ? () => setShowAddForm(false) : openForm}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            padding: '6px 14px',
-                            borderRadius: 10,
-                            background: showAddForm ? 'rgba(255,255,255,0.06)' : 'var(--nc-primary)',
-                            border: `1px solid ${showAddForm ? 'var(--nc-border)' : 'transparent'}`,
-                            color: showAddForm ? 'var(--nc-text-secondary)' : 'var(--nc-bg)',
-                            fontSize: 12,
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            transition: 'all 0.18s ease',
-                            boxShadow: 'none',
-                        }}
+                        className={`text-[12px] font-medium flex items-center gap-1.5 px-3 py-1.5 rounded transition-colors ${
+                            showAddForm
+                                ? 'text-[#A1A4AC] hover:text-[#E8E8EA] bg-[#15171A]'
+                                : 'text-white bg-[#3B82F6] hover:bg-[#2563EB]'
+                        }`}
                     >
-                        <i className={showAddForm ? 'ri-close-line' : 'ri-add-line'} style={{ fontSize: 14 }} />
-                        {showAddForm ? 'Cancel' : 'Add Task'}
+                        <i className={showAddForm ? 'ri-close-line text-[13px]' : 'ri-add-line text-[13px]'} />
+                        {showAddForm ? 'Cancel' : 'New Task'}
                     </button>
                 </div>
+                <p className="text-[12px] text-[#6B6F78]">
+                    Plan, track, and finish the work for this workspace.
+                </p>
+            </div>
 
-                {/* Stats row */}
-                {totalTasks > 0 && (
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-                        <StatCard
-                            label="Total" value={totalTasks}
-                            icon="ri-list-check-3" color="var(--nc-text-secondary)"
-                            bg="rgba(255,255,255,0.03)" border="rgba(255,255,255,0.07)"
-                        />
-                        <StatCard
-                            label="Done" value={completedTasks}
-                            icon="ri-check-double-line" color="#22C55E"
-                            bg="rgba(34,197,94,0.07)" border="rgba(34,197,94,0.15)"
-                        />
-                        <StatCard
-                            label="Urgent" value={highPriorityActive}
-                            icon="ri-alarm-warning-line" color="#EF4444"
-                            bg="rgba(239,68,68,0.07)" border="rgba(239,68,68,0.15)"
-                        />
+            {/* ── Compact Progress + Stats ── */}
+            {totalTasks > 0 && (
+                <div className="px-4 pb-3 shrink-0">
+                    <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[11px] text-[#6B6F78]">
+                            {totalTasks} task{totalTasks !== 1 ? 's' : ''} · {completedTasks} completed · {remainingTasks} remaining
+                        </span>
+                        <span className={`text-[11px] font-medium ${pct === 100 ? 'text-[#22C55E]' : 'text-[#A1A4AC]'}`}>
+                            {pct}%
+                        </span>
                     </div>
-                )}
-
-                {/* Progress bar */}
-                {totalTasks > 0 && (
-                    <div style={{ marginBottom: 14 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--nc-text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                                Progress
-                            </span>
-                            <span style={{ fontSize: 11, fontWeight: 800, color: pct === 100 ? '#22C55E' : 'var(--nc-primary)' }}>
-                                {pct}%
-                            </span>
-                        </div>
-                        <div style={{
-                            width: '100%', height: 6, borderRadius: 99,
-                            background: 'rgba(255,255,255,0.06)',
-                            overflow: 'hidden',
-                        }}>
-                            <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: `${pct}%` }}
-                                transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-                                style={{
-                                    height: '100%',
-                                    borderRadius: 99,
-                                    background: pct === 100
-                                        ? 'linear-gradient(90deg, #22C55E, #16A34A)'
-                                        : 'var(--nc-primary)',
-                                    boxShadow: 'none',
-                                }}
-                            />
-                        </div>
-                    </div>
-                )}
-
-                {/* Search + Sort + Filter Tabs */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                    {/* Search */}
-                    <div style={{ position: 'relative', flex: 1 }}>
-                        <i className="ri-search-line" style={{
-                            position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)',
-                            fontSize: 12, color: 'var(--nc-text-muted)', pointerEvents: 'none',
-                        }} />
-                        <input
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            placeholder="Search tasks…"
-                            className="nc-input"
-                            style={{ height: 30, paddingLeft: 28, fontSize: 12, width: '100%' }}
+                    <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: '#1A1C20' }}>
+                        <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${pct}%` }}
+                            transition={{ duration: 0.4, ease: 'easeOut' }}
+                            className="h-full rounded-full"
+                            style={{ background: pct === 100 ? '#22C55E' : '#3B82F6' }}
                         />
-                        {search && (
-                            <button
-                                onClick={() => setSearch('')}
-                                style={{
-                                    position: 'absolute', right: 7, top: '50%', transform: 'translateY(-50%)',
-                                    background: 'none', border: 'none', cursor: 'pointer',
-                                    color: 'var(--nc-text-muted)', fontSize: 12, padding: 0, display: 'flex',
-                                }}
-                            >
-                                <i className="ri-close-line" />
-                            </button>
-                        )}
                     </div>
                 </div>
+            )}
 
-                {/* Filter tabs */}
-                <div style={{ display: 'flex', gap: 4, marginBottom: -1 }}>
-                    {filterTabs.map(tab => (
+            {/* ── Search + Filters ── */}
+            <div className="px-4 pb-2 shrink-0 flex flex-col gap-2">
+                {/* Search */}
+                <div className="relative">
+                    <i className="ri-search-line absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-[#6B6F78]" />
+                    <input
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Search tasks…"
+                        className="w-full pl-7 pr-7 py-1.5 rounded text-[12px] outline-none transition-colors"
+                        style={{
+                            background: '#101113',
+                            border: '1px solid #24262A',
+                            color: '#E8E8EA',
+                        }}
+                        onFocus={e => e.target.style.borderColor = '#3B82F6'}
+                        onBlur={e => e.target.style.borderColor = '#24262A'}
+                    />
+                    {search && (
                         <button
-                            key={tab.id}
-                            onClick={() => setFilter(tab.id)}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 5,
-                                padding: '6px 12px',
-                                borderRadius: '8px 8px 0 0',
-                                border: `1px solid ${filter === tab.id ? 'var(--nc-border)' : 'transparent'}`,
-                                borderBottom: `2px solid ${filter === tab.id ? 'var(--nc-primary)' : 'transparent'}`,
-                                background: filter === tab.id ? 'var(--nc-elevated)' : 'transparent',
-                                color: filter === tab.id ? 'var(--nc-text-primary)' : 'var(--nc-text-muted)',
-                                fontSize: 12,
-                                fontWeight: filter === tab.id ? 700 : 500,
-                                cursor: 'pointer',
-                                transition: 'all 0.15s',
-                            }}
+                            onClick={() => setSearch('')}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-[#6B6F78] hover:text-[#E8E8EA] text-[12px]"
+                            aria-label="Clear search"
                         >
-                            {tab.label}
-                            <span style={{
-                                fontSize: 10,
-                                fontWeight: 800,
-                                padding: '1px 5px',
-                                borderRadius: 99,
-                                background: filter === tab.id ? 'var(--nc-primary-muted)' : 'rgba(255,255,255,0.05)',
-                                color: filter === tab.id ? 'var(--nc-primary)' : 'var(--nc-text-muted)',
-                            }}>
-                                {tab.count}
-                            </span>
+                            <i className="ri-close-line" />
                         </button>
-                    ))}
+                    )}
+                </div>
+
+                {/* Filter + Sort Row */}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-0.5">
+                        {filters.map(f => (
+                            <button
+                                key={f.id}
+                                onClick={() => setFilter(f.id)}
+                                className={`text-[11px] px-2.5 py-1 rounded transition-colors ${
+                                    filter === f.id
+                                        ? 'text-[#E8E8EA] bg-[#1A1C20] font-medium'
+                                        : 'text-[#6B6F78] hover:text-[#A1A4AC]'
+                                }`}
+                            >
+                                {f.label}
+                                <span className={`ml-1 ${filter === f.id ? 'text-[#A1A4AC]' : 'text-[#3D4047]'}`}>
+                                    {f.count}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+
+                    <select
+                        value={sortBy}
+                        onChange={e => setSortBy(e.target.value)}
+                        className="text-[11px] bg-transparent text-[#6B6F78] outline-none cursor-pointer hover:text-[#A1A4AC] transition-colors"
+                        title="Sort tasks"
+                    >
+                        <option value="default">Default</option>
+                        <option value="priority">Priority</option>
+                        <option value="status">Status</option>
+                    </select>
                 </div>
             </div>
 
-            {/* ── Add Task Form ── */}
+            {/* ── New Task Form ── */}
             <AnimatePresence>
                 {showAddForm && (
                     <motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                        style={{ overflow: 'hidden', flexShrink: 0 }}
+                        transition={{ duration: 0.18 }}
+                        className="overflow-hidden shrink-0"
                     >
-                        <div style={{
-                            padding: '14px 16px',
-                            background: 'var(--nc-primary-muted)',
-                            borderBottom: '1px solid var(--nc-border)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 10,
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                                <i className="ri-add-circle-line" style={{ fontSize: 13, color: 'var(--nc-primary)' }} />
-                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--nc-primary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                                    New Task
-                                </span>
-                            </div>
-
+                        <div className="px-4 py-3 border-y border-[#1A1C20]" style={{ background: '#0D0D0F' }}>
                             <input
                                 ref={titleInputRef}
                                 type="text"
@@ -306,69 +195,48 @@ const TaskList = ({ tasks = [], projectUsers = [], onCreateTask, onUpdateTask, o
                                 onChange={e => setNewTaskTitle(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 placeholder="What needs to be done?"
-                                className="nc-input"
-                                style={{ height: 38, fontSize: 13, paddingLeft: 12 }}
+                                className="w-full text-[13px] font-medium bg-transparent text-[#E8E8EA] outline-none placeholder:text-[#6B6F78] mb-2.5"
                             />
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                                <div>
-                                    <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--nc-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 5 }}>
-                                        Priority
-                                    </label>
-                                    <select
-                                        value={newTaskPriority}
-                                        onChange={e => setNewTaskPriority(e.target.value)}
-                                        className="nc-input w-full"
-                                        style={{ height: 34, fontSize: 12 }}
-                                    >
-                                        <option value="high">🔴 High Priority</option>
-                                        <option value="medium">🟡 Medium Priority</option>
-                                        <option value="low">🟢 Low Priority</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--nc-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 5 }}>
-                                        Assign To
-                                    </label>
-                                    <select
-                                        value={newTaskAssignedTo}
-                                        onChange={e => setNewTaskAssignedTo(e.target.value)}
-                                        className="nc-input w-full"
-                                        style={{ height: 34, fontSize: 12 }}
-                                    >
-                                        <option value="">Unassigned</option>
-                                        {projectUsers.map(u => (
-                                            <option key={u._id} value={u._id}>{u.email}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
+                            <div className="flex items-center gap-2">
+                                <select
+                                    value={newTaskPriority}
+                                    onChange={e => setNewTaskPriority(e.target.value)}
+                                    className="text-[11px] bg-[#15171A] text-[#A1A4AC] border border-[#24262A] rounded px-2 py-1 outline-none focus:border-[#3B82F6]"
+                                >
+                                    <option value="high">High</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="low">Low</option>
+                                </select>
 
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                                <select
+                                    value={newTaskAssignedTo}
+                                    onChange={e => setNewTaskAssignedTo(e.target.value)}
+                                    className="text-[11px] bg-[#15171A] text-[#A1A4AC] border border-[#24262A] rounded px-2 py-1 outline-none focus:border-[#3B82F6]"
+                                >
+                                    <option value="">Unassigned</option>
+                                    {projectUsers.map(u => (
+                                        <option key={u._id} value={u._id}>{u.email}</option>
+                                    ))}
+                                </select>
+
+                                <div className="flex-1" />
+
                                 <button
                                     onClick={() => setShowAddForm(false)}
-                                    style={{
-                                        padding: '7px 14px', borderRadius: 9, fontSize: 12, fontWeight: 600,
-                                        background: 'rgba(255,255,255,0.05)', border: '1px solid var(--nc-border)',
-                                        color: 'var(--nc-text-secondary)', cursor: 'pointer',
-                                    }}
+                                    className="text-[11px] text-[#6B6F78] hover:text-[#A1A4AC] transition-colors px-2 py-1"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleCreateTask}
                                     disabled={!newTaskTitle.trim()}
-                                    style={{
-                                        padding: '7px 16px', borderRadius: 9, fontSize: 12, fontWeight: 700,
-                                        background: newTaskTitle.trim() ? 'var(--nc-primary)' : 'var(--nc-primary-muted)',
-                                        border: 'none',
-                                        color: newTaskTitle.trim() ? 'var(--nc-bg)' : 'var(--nc-text-muted)', cursor: newTaskTitle.trim() ? 'pointer' : 'not-allowed',
-                                        display: 'flex', alignItems: 'center', gap: 6,
-                                        boxShadow: 'none',
-                                        transition: 'all 0.15s',
-                                    }}
+                                    className={`text-[11px] font-semibold rounded px-3 py-1 transition-colors ${
+                                        newTaskTitle.trim()
+                                            ? 'text-white bg-[#3B82F6] hover:bg-[#2563EB]'
+                                            : 'text-[#6B6F78] bg-[#15171A] cursor-not-allowed'
+                                    }`}
                                 >
-                                    <i className="ri-add-line" />
                                     Create Task
                                 </button>
                             </div>
@@ -378,70 +246,35 @@ const TaskList = ({ tasks = [], projectUsers = [], onCreateTask, onUpdateTask, o
             </AnimatePresence>
 
             {/* ── Task List ── */}
-            <div style={{
-                flex: 1,
-                overflowY: 'auto',
-                padding: '12px 12px 20px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 8,
-            }}>
+            <div className="flex-1 overflow-y-auto">
                 <AnimatePresence mode="popLayout">
                     {filtered.length === 0 ? (
                         <motion.div
                             key="empty"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                padding: '48px 24px',
-                                textAlign: 'center',
-                                flex: 1,
-                            }}
+                            className="flex flex-col items-center justify-center py-16 px-4 text-center"
                         >
-                            <div style={{
-                                width: 56, height: 56, borderRadius: 16, marginBottom: 16,
-                                background: 'var(--nc-primary-muted)',
-                                border: '1px solid var(--nc-primary-border)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            }}>
-                                <i
-                                    className={
-                                        search ? 'ri-search-line' :
-                                        filter === 'completed' ? 'ri-checkbox-circle-line' :
-                                        filter === 'active' ? 'ri-check-double-fill' :
-                                        'ri-task-line'
-                                    }
-                                    style={{ fontSize: 24, color: 'var(--nc-primary)', opacity: 0.6 }}
-                                />
-                            </div>
-                            <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--nc-text-primary)', margin: '0 0 6px' }}>
-                                {search ? 'No matching tasks' :
-                                    filter === 'completed' ? 'No completed tasks' :
-                                    filter === 'active' ? 'All caught up! 🎉' :
-                                    'No tasks yet'}
+                            <p className="text-[14px] font-medium text-[#A1A4AC] mb-1">
+                                {search
+                                    ? 'No matching tasks'
+                                    : filter === 'completed'
+                                    ? 'No completed tasks yet'
+                                    : 'No tasks yet'}
                             </p>
-                            <p style={{ fontSize: 12, color: 'var(--nc-text-muted)', margin: 0, maxWidth: 200 }}>
-                                {search ? `No tasks matching "${search}"` :
-                                    filter === 'all' ? 'Click "Add Task" to get started.' :
-                                    filter === 'active' ? 'All tasks are completed.' :
-                                    'Complete some tasks to see them here.'}
+                            <p className="text-[12px] text-[#6B6F78] max-w-[240px] leading-relaxed">
+                                {search
+                                    ? `Nothing matches "${search}"`
+                                    : 'Break your project into smaller steps and keep track of what needs to be done.'}
                             </p>
-                            {search && (
+                            {!search && filter === 'all' && (
                                 <button
-                                    onClick={() => setSearch('')}
-                                    style={{
-                                        marginTop: 14, padding: '6px 16px', borderRadius: 9, fontSize: 12,
-                                        fontWeight: 600, background: 'var(--nc-primary-muted)',
-                                        border: '1px solid var(--nc-primary-border)',
-                                        color: 'var(--nc-primary)', cursor: 'pointer',
-                                    }}
+                                    onClick={openForm}
+                                    className="mt-4 text-[12px] font-medium text-[#3B82F6] hover:text-[#5B9AFF] transition-colors flex items-center gap-1"
                                 >
-                                    Clear search
+                                    <i className="ri-add-line text-[13px]" />
+                                    Create your first task
                                 </button>
                             )}
                         </motion.div>
@@ -460,45 +293,12 @@ const TaskList = ({ tasks = [], projectUsers = [], onCreateTask, onUpdateTask, o
                 </AnimatePresence>
             </div>
 
-            {/* ── Footer quick-add hint ── */}
-            {!showAddForm && totalTasks > 0 && (
-                <div style={{
-                    padding: '10px 16px',
-                    borderTop: '1px solid var(--nc-border)',
-                    flexShrink: 0,
-                }}>
-                    <button
-                        onClick={openForm}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            width: '100%',
-                            padding: '8px 12px',
-                            borderRadius: 10,
-                            background: 'transparent',
-                            border: '1px dashed var(--nc-border)',
-                            color: 'var(--nc-text-muted)',
-                            fontSize: 12,
-                            fontWeight: 500,
-                            cursor: 'pointer',
-                            transition: 'all 0.15s',
-                        }}
-                        onMouseEnter={e => {
-                            e.currentTarget.style.background = 'var(--nc-primary-muted)'
-                            e.currentTarget.style.color = 'var(--nc-primary)'
-                            e.currentTarget.style.borderColor = 'var(--nc-primary-border)'
-                        }}
-                        onMouseLeave={e => {
-                            e.currentTarget.style.background = 'transparent'
-                            e.currentTarget.style.color = 'var(--nc-text-muted)'
-                            e.currentTarget.style.borderColor = 'var(--nc-border)'
-                        }}
-                    >
-                        <i className="ri-add-line" style={{ fontSize: 14 }} />
-                        Add another task…
-                        <span style={{ marginLeft: 'auto', fontSize: 10, opacity: 0.5 }}>Enter</span>
-                    </button>
+            {/* ── AI Helper ── */}
+            {totalTasks < 3 && (
+                <div className="px-4 py-3 shrink-0 border-t border-[#1A1C20]">
+                    <p className="text-[11px] text-[#6B6F78] leading-relaxed">
+                        <span className="text-[#A1A4AC]">Tip:</span> Ask NeuraChat AI to break your project into tasks by typing <span className="text-[#3B82F6] font-medium">@ai</span> in the chat.
+                    </p>
                 </div>
             )}
         </div>

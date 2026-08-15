@@ -4,8 +4,10 @@ import jwt from 'jsonwebtoken';
 // Exchange OAuth code for GitHub access token
 export const githubCallback = async (req, res) => {
     const { code, state } = req.query; // state holds the user JWT
+    const frontendUrl = (process.env.FRONTEND_URL || 'https://neura-chat-omega.vercel.app').replace(/\/$/, '');
+
     if (!code) {
-        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/profile?error=No_code_provided`);
+        return res.redirect(`${frontendUrl}/profile?error=No_code_provided`);
     }
 
     try {
@@ -27,7 +29,7 @@ export const githubCallback = async (req, res) => {
         const accessToken = tokenData.access_token;
 
         if (!accessToken) {
-            return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/profile?error=Failed_to_retrieve_access_token`);
+            return res.redirect(`${frontendUrl}/profile?error=Failed_to_retrieve_access_token`);
         }
 
         // Step 2: Fetch user profile from GitHub
@@ -44,7 +46,7 @@ export const githubCallback = async (req, res) => {
         // Step 3: Decode state JWT to identify logged-in user
         const decoded = jwt.verify(state, process.env.JWT_SECRET);
         if (!decoded || !decoded.email) {
-            return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/profile?error=Invalid_state_session`);
+            return res.redirect(`${frontendUrl}/profile?error=Invalid_state_session`);
         }
 
         // Step 4: Save credentials to User model
@@ -60,10 +62,10 @@ export const githubCallback = async (req, res) => {
         );
 
         // Redirect back to frontend profile
-        res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/profile?success=github_connected`);
+        res.redirect(`${frontendUrl}/profile?success=github_connected`);
     } catch (error) {
         console.error('GitHub OAuth error:', error);
-        res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/profile?error=Auth_failed`);
+        res.redirect(`${frontendUrl}/profile?error=Auth_failed`);
     }
 };
 

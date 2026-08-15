@@ -139,6 +139,15 @@
 }
 
 
+/* ── Task row hover-to-reveal actions ── */
+.task-row .task-row-actions {
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.task-row:hover .task-row-actions {
+  opacity: 1;
+}
+
 /* ================================================================
    COMPONENT LAYER
    ================================================================ */
@@ -1832,11 +1841,31 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #0b0b0f;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+  background-color: #0A0A0B;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
   background-size: 20px 20px;
   padding: 40px;
   min-height: 0;
+}
+
+/* Preview toolbar responsive collapse */
+.preview-show-narrow-only { display: none; }
+
+@container (max-width: 500px) {
+  .preview-hide-narrow { display: none !important; }
+  .preview-show-narrow-only { display: block; }
+}
+
+/* Fallback: use @media for browsers without container queries */
+@supports not (container-type: inline-size) {
+  @media (max-width: 768px) {
+    .preview-hide-narrow { display: none !important; }
+    .preview-show-narrow-only { display: block; }
+  }
+}
+
+.preview-canvas-container {
+  container-type: inline-size;
 }
 
 .preview-resizer {
@@ -2017,3 +2046,547 @@
   position: relative;
 }
 
+/* ================================================================
+   CONSOLE TERMINAL — VS Code / Cursor–Style Panel
+   Professional, compact, readable. No neon, no glow.
+   ================================================================ */
+
+/* ── Panel container ── */
+.nc-term-panel {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  background: #1a1a1f;
+  border-top: 1px solid #2d2d35;
+  overflow: hidden;
+  transition: height 120ms ease-out;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* ── Resize handle ── */
+.nc-term-resize-handle {
+  height: 4px;
+  cursor: row-resize;
+  background: #2d2d35;
+  transition: background 120ms ease;
+  flex-shrink: 0;
+  position: relative;
+}
+.nc-term-resize-handle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 2px;
+  background: #3d3d45;
+  border-radius: 1px;
+  transition: background 120ms ease;
+}
+.nc-term-resize-handle:hover,
+.nc-term-resize-active {
+  background: #3b82f6;
+}
+.nc-term-resize-handle:hover::after,
+.nc-term-resize-active::after {
+  background: transparent;
+}
+
+/* ── Header bar ── */
+.nc-term-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 36px;
+  padding: 0 10px;
+  background: #1e1e24;
+  border-bottom: 1px solid #2d2d35;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.nc-term-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.nc-term-header-right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* ── Title button (collapse toggle) ── */
+.nc-term-title-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 120ms ease;
+}
+.nc-term-title-btn:hover {
+  background: #2a2a32;
+}
+.nc-term-title-btn:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+}
+.nc-term-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #c8c8cd;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.nc-term-chevron {
+  font-size: 12px;
+  color: #6b6b78;
+  transition: transform 120ms ease;
+}
+
+/* ── Status dots ── */
+.nc-term-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.nc-term-dot-idle {
+  background: #6b6b78;
+}
+.nc-term-dot-running {
+  background: #22c55e;
+  animation: nc-term-pulse 2s ease-in-out infinite;
+}
+.nc-term-dot-starting {
+  background: #eab308;
+  animation: nc-term-pulse 1s ease-in-out infinite;
+}
+.nc-term-dot-error {
+  background: #ef4444;
+}
+
+@keyframes nc-term-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ── Line count badge ── */
+.nc-term-line-count {
+  font-size: 10px;
+  font-weight: 500;
+  color: #6b6b78;
+  background: #252530;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Filter tabs ── */
+.nc-term-filters {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  margin-left: 4px;
+}
+
+.nc-term-filter-tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: none;
+  background: none;
+  color: #6b6b78;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 100ms ease;
+  white-space: nowrap;
+}
+.nc-term-filter-tab:hover {
+  color: #a1a1aa;
+  background: #252530;
+}
+.nc-term-filter-tab.active {
+  color: #e4e4e8;
+  background: #2a2a35;
+}
+.nc-term-filter-tab:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+}
+.nc-term-filter-count {
+  font-size: 10px;
+  font-weight: 600;
+  color: #6b6b78;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.nc-term-filter-tab.active .nc-term-filter-count {
+  color: #a1a1aa;
+}
+
+/* ── Icon buttons ── */
+.nc-term-icon-btn {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: #6b6b78;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 100ms ease;
+  flex-shrink: 0;
+}
+.nc-term-icon-btn:hover {
+  color: #c8c8cd;
+  background: #2a2a32;
+}
+.nc-term-icon-btn:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+}
+.nc-term-icon-btn-active {
+  color: #3b82f6 !important;
+  background: rgba(59, 130, 246, 0.1);
+}
+.nc-term-icon-btn-danger:hover {
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.08) !important;
+}
+
+.nc-term-divider {
+  width: 1px;
+  height: 16px;
+  background: #2d2d35;
+  margin: 0 3px;
+  flex-shrink: 0;
+}
+
+/* ── Search bar ── */
+.nc-term-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: #1a1a20;
+  border-bottom: 1px solid #2d2d35;
+  flex-shrink: 0;
+}
+.nc-term-search-icon {
+  font-size: 12px;
+  color: #4a4a55;
+  flex-shrink: 0;
+}
+.nc-term-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 12px;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  color: #c8c8cd;
+  min-width: 0;
+}
+.nc-term-search-input::placeholder {
+  color: #4a4a55;
+}
+.nc-term-search-count {
+  font-size: 10px;
+  color: #6b6b78;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+.nc-term-search-clear {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: #6b6b78;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.nc-term-search-clear:hover {
+  color: #c8c8cd;
+  background: #2a2a32;
+}
+
+/* ── Terminal body ── */
+.nc-term-body-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.nc-term-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 0;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.nc-term-wrap {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.nc-term-nowrap {
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* Scrollbar in terminal */
+.nc-term-body::-webkit-scrollbar {
+  width: 6px;
+}
+.nc-term-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.nc-term-body::-webkit-scrollbar-thumb {
+  background: rgba(100, 100, 120, 0.25);
+  border-radius: 3px;
+}
+.nc-term-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 100, 120, 0.4);
+}
+
+/* ── Log row ── */
+.nc-term-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  padding: 1px 10px 1px 0;
+  min-height: 22px;
+  transition: background 80ms ease;
+}
+.nc-term-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+.nc-term-row-clickable {
+  cursor: pointer;
+}
+.nc-term-row-clickable:hover {
+  background: rgba(59, 130, 246, 0.05);
+}
+
+/* ── Line numbers ── */
+.nc-term-line-num {
+  display: inline-block;
+  width: 44px;
+  text-align: right;
+  padding-right: 10px;
+  color: #3a3a45;
+  font-size: 10px;
+  user-select: none;
+  flex-shrink: 0;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Timestamps ── */
+.nc-term-timestamp {
+  color: #4a4a55;
+  font-size: 10px;
+  margin-right: 8px;
+  flex-shrink: 0;
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Log content ── */
+.nc-term-content {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+.nc-term-content i {
+  font-size: 12px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+/* ── Log level colors — restrained, readable ── */
+.nc-term-text,
+.nc-term-text .nc-term-content span {
+  color: #b4b4bc;
+}
+.nc-term-error,
+.nc-term-error .nc-term-content span {
+  color: #f87171;
+}
+.nc-term-error-icon {
+  color: #ef4444 !important;
+}
+.nc-term-warning,
+.nc-term-warning .nc-term-content span {
+  color: #fbbf24;
+}
+.nc-term-warning-icon {
+  color: #d97706 !important;
+}
+.nc-term-success,
+.nc-term-success .nc-term-content span {
+  color: #4ade80;
+}
+.nc-term-success-icon {
+  color: #22c55e !important;
+}
+
+/* ── File link in error rows ── */
+.nc-term-file-link {
+  font-size: 10px;
+  color: #6b6b78;
+  margin-left: auto;
+  flex-shrink: 0;
+  padding-left: 12px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  text-decoration: underline;
+  text-decoration-color: rgba(107, 107, 120, 0.3);
+  transition: color 100ms ease;
+}
+.nc-term-row-clickable:hover .nc-term-file-link {
+  color: #3b82f6;
+  text-decoration-color: #3b82f6;
+}
+
+/* ── Scroll controls ── */
+.nc-term-scroll-controls {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 10;
+}
+.nc-term-scroll-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #252530;
+  border: 1px solid #2d2d35;
+  border-radius: 6px;
+  color: #a1a1aa;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 100ms ease;
+}
+.nc-term-scroll-btn:hover {
+  background: #2a2a35;
+  color: #e4e4e8;
+  border-color: #3b3b45;
+}
+
+/* ── New output indicator ── */
+.nc-term-new-output {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  background: #252530;
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+  color: #3b82f6;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 100ms ease;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.nc-term-new-output:hover {
+  background: rgba(59, 130, 246, 0.12);
+}
+.nc-term-new-output i {
+  font-size: 12px;
+}
+
+/* ── Empty state ── */
+.nc-term-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px;
+  text-align: center;
+}
+.nc-term-empty-icon {
+  font-size: 24px;
+  color: #3a3a45;
+  margin-bottom: 4px;
+}
+.nc-term-empty-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b6b78;
+}
+.nc-term-empty-sub {
+  font-size: 11px;
+  color: #4a4a55;
+}
+
+/* ── Editor minimized when terminal maximized ── */
+.nc-term-editor-minimized {
+  max-height: 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  flex: 0 !important;
+}
+
+/* ================================================================
+   TERMINAL RESPONSIVE BREAKPOINTS
+   ================================================================ */
+
+/* At narrow widths, hide filter labels */
+@media (max-width: 1024px) {
+  .nc-term-filters {
+    display: none;
+  }
+}
+
+/* At very narrow widths, hide secondary controls */
+@media (max-width: 768px) {
+  .nc-term-header-right .nc-term-divider,
+  .nc-term-header-right .nc-term-icon-btn:nth-child(n+5) {
+    display: none;
+  }
+  .nc-term-line-count {
+    display: none;
+  }
+}

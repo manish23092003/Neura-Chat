@@ -1,6 +1,4 @@
-import React, {
-    useState, useEffect, useContext, useRef, useCallback, useMemo
-} from 'react'
+import React, { useState, useEffect, useContext, useRef, useCallback, useMemo } from 'react'
 import { UserContext } from '../context/user.context'
 import { useNavigate, useLocation } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -18,11 +16,24 @@ import ChatPanel from '../components/project/ChatPanel'
 import FileExplorer from '../components/project/FileExplorer'
 import CodeEditor from '../components/project/CodeEditor'
 import LivePreview from '../components/project/LivePreview'
+import { WorkspaceSidebar } from '../components/project/WorkspaceSidebar'
+import { ErrorOverlay } from '../components/project/ErrorOverlay'
+import { VersionHistoryModal } from '../components/project/VersionHistoryModal'
+import { CommandPalette } from '../components/project/CommandPalette'
+import { StatusBar } from '../components/project/StatusBar'
+import { AiContextViewer } from '../components/project/AiContextViewer'
+import { ActivityPanel } from '../components/project/ActivityPanel'
+import { saveVersionSnapshot } from '../services/versionHistory'
+import { commandRegistry } from '../services/commandRegistry'
+import { settingsManager } from '../services/settingsManager'
+import { aiMemoryEngine } from '../services/aiMemoryEngine'
 
 // Custom hooks
 import useFileTree from '../hooks/useFileTree'
 import useProjectSocket from '../hooks/useProjectSocket'
 import useLifoRuntime from '../hooks/useLifoRuntime'
+import useWorkspaces from '../hooks/useWorkspaces'
+import useKeyboardShortcuts from '../hooks/useKeyboardShortcuts'
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -53,7 +64,6 @@ const Project = () => {
 
     // UI state
     const [activeTab, setActiveTab] = useState('chat')
-    const [isSidePanelOpen, setIsSidePanelOpen] = useState(false)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [selectedUserId, setSelectedUserId] = useState(new Set())
     const [isFileUploadModalOpen, setIsFileUploadModalOpen] = useState(false)
@@ -75,16 +85,136 @@ const Project = () => {
     const [previewOrientation, setPreviewOrientation] = useState('portrait')
     const [previewWidth, setPreviewWidth] = useState(375)
 
+    // Command Palette & Settings state
+    const [commandPaletteMode, setCommandPaletteMode] = useState('commands') // 'commands' | 'files'
+    const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
+    const [isAiContextViewerOpen, setIsAiContextViewerOpen] = useState(false)
+    const [isActivityPanelOpen, setIsActivityPanelOpen] = useState(false)
+    const [aiDockPosition, setAiDockPosition] = useState(settingsManager.get('aiDockPosition'))
+
+    // Global keyboard shortcuts hook
+    useKeyboardShortcuts()
+
+    // Workspace & History state
+    const [isWorkspaceSidebarOpen, setIsWorkspaceSidebarOpen] = useState(false)
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
+    const {
+        workspaces,
+        activeWorkspace,
+        activeWorkspaceId,
+        switchWorkspace,
+        createWorkspace,
+        renameWorkspace,
+        duplicateWorkspace,
+        deleteWorkspace,
+        togglePinWorkspace,
+        updateActiveWorkspace,
+        updateWorkspaceTreeById,
+    } = useWorkspaces(project._id, initialProject?.fileTree)
+
+    const activeWsIdRef = useRef(activeWorkspaceId)
+    useEffect(() => {
+        activeWsIdRef.current = activeWorkspaceId
+    }, [activeWorkspaceId])
+
+    const handleWorkspaceSync = useCallback((newTree, wsId) => {
+        if (wsId) {
+            updateWorkspaceTreeById(wsId, newTree)
+        } else {
+            updateActiveWorkspace({ fileTree: newTree })
+        }
+    }, [updateWorkspaceTreeById, updateActiveWorkspace])
+
+    const currentInitialTree = useMemo(() => {
+        if (activeWorkspace) {
+            return activeWorkspace.fileTree || {}
+        }
+        return initialProject?.fileTree || {}
+    }, [activeWorkspace, initialProject?.fileTree])
+
     // ── File tree hook ────────────────────────────────────────────────────────
     const { fileTree, fileTreeRef, setFileTree, updateFile, deleteFile, mergeAiTree, getFile, getAllPaths } =
-        useFileTree(initialProject?.fileTree || {}, project._id, setProject)
+        useFileTree(
+            currentInitialTree,
+            project._id,
+            setProject,
+            handleWorkspaceSync,
+            activeWorkspaceId
+        )
 
     // ── Runtime hook ──────────────────────────────────────────────────────────
     const {
         isRunning, runtimeStatus, terminalOutput,
-        iframeUrl, setIframeUrl, previewsList, setPreviewsList,
-        runProject, clearTerminal,
+        logs, iframeUrl, setIframeUrl, previewsList,
+        runProject, clearTerminal, getRuntimeErrors, getRuntimeWarnings,
     } = useLifoRuntime(project._id)
+
+    // Extracted AI Memory
+    const aiMemory = useMemo(() => aiMemoryEngine.extractMemory(fileTree), [fileTree])
+
+    // Cycle AI Dock Position
+    const toggleAiDock = useCallback(() => {
+        const positions = ['right', 'bottom', 'floating', 'hidden']
+        setAiDockPosition(prev => {
+            const nextIdx = (positions.indexOf(prev) + 1) % positions.length
+            const nextPos = positions[nextIdx]
+            settingsManager.set('aiDockPosition', nextPos)
+            return nextPos
+        })
+    }, [])
+
+    // Register IDE Commands in commandRegistry
+    useEffect(() => {
+        const u1 = commandRegistry.register({
+            id: 'ide.commandPalette',
+            label: 'Command Palette',
+            category: 'IDE',
+            shortcut: 'Ctrl + Shift + P',
+            icon: 'ri-command-line',
+            action: () => { setCommandPaletteMode('commands'); setIsCommandPaletteOpen(true) },
+        })
+        const u2 = commandRegistry.register({
+            id: 'ide.quickOpen',
+            label: 'Quick Open File',
+            category: 'Navigation',
+            shortcut: 'Ctrl + P',
+            icon: 'ri-file-search-line',
+            action: () => { setCommandPaletteMode('files'); setIsCommandPaletteOpen(true) },
+        })
+        const u3 = commandRegistry.register({
+            id: 'runtime.run',
+            label: 'Run Sandbox Project',
+            category: 'Execution',
+            shortcut: 'F5',
+            icon: 'ri-play-line',
+            action: () => runProject(fileTreeRef.current),
+        })
+        const u4 = commandRegistry.register({
+            id: 'sidebar.toggle',
+            label: 'Toggle Workspace Sidebar',
+            category: 'IDE',
+            shortcut: 'Ctrl + B',
+            icon: 'ri-layout-grid-line',
+            action: () => setIsWorkspaceSidebarOpen(p => !p),
+        })
+        const u5 = commandRegistry.register({
+            id: 'ai.toggle',
+            label: 'Cycle AI Assistant Dock Position',
+            category: 'AI Assistant',
+            shortcut: 'Ctrl + L',
+            icon: 'ri-robot-2-line',
+            action: toggleAiDock,
+        })
+        const u6 = commandRegistry.register({
+            id: 'ai.memory',
+            label: 'View AI Memory & Context',
+            category: 'AI Assistant',
+            icon: 'ri-brain-line',
+            action: () => setIsAiContextViewerOpen(true),
+        })
+
+        return () => { u1(); u2(); u3(); u4(); u5(); u6() }
+    }, [runProject, toggleAiDock, fileTreeRef])
 
     // ── Socket handlers (stable refs via useCallback) ─────────────────────────
     const handleMessage = useCallback((data) => {
@@ -96,14 +226,25 @@ const Project = () => {
                 else if (cleaned.startsWith('```')) cleaned = cleaned.slice(3)
                 if (cleaned.endsWith('```')) cleaned = cleaned.slice(0, -3)
                 const parsed = JSON.parse(cleaned.trim())
-                if (parsed.fileTree) mergeAiTree(parsed.fileTree)
+                if (parsed.fileTree) {
+                    const targetWsId = data.workspaceId || activeWsIdRef.current
+                    if (targetWsId && targetWsId === activeWsIdRef.current) {
+                        mergeAiTree(parsed.fileTree)
+                        saveVersionSnapshot(targetWsId, parsed.fileTree, `AI: ${(parsed.text || '').slice(0, 40)}...`)
+                    } else if (targetWsId) {
+                        updateWorkspaceTreeById(targetWsId, parsed.fileTree).then((updatedWs) => {
+                            toast.success(`AI generated code for workspace "${updatedWs?.name || 'background workspace'}"! 🚀`)
+                        })
+                        saveVersionSnapshot(targetWsId, parsed.fileTree, `AI: ${(parsed.text || '').slice(0, 40)}...`)
+                    }
+                }
             } catch { /* non-JSON AI response — just show text */ }
         }
         setMessages(prev => [...prev, data])
         setTimeout(() => {
             if (messageBox.current) messageBox.current.scrollTop = messageBox.current.scrollHeight
         }, 80)
-    }, [mergeAiTree])
+    }, [mergeAiTree, activeWsIdRef, updateWorkspaceTreeById])
 
     const handleFileMessage = useCallback((data) => {
         setMessages(prev => [...prev, data])
@@ -151,7 +292,6 @@ const Project = () => {
         ]).then(([projRes, msgsRes, usersRes]) => {
             if (projRes.data?.project) {
                 setProject(projRes.data.project)
-                setFileTree(projRes.data.project.fileTree || {})
             }
             setMessages(msgsRes.data?.messages || [])
             setUsers(usersRes.data?.users || [])
@@ -164,6 +304,30 @@ const Project = () => {
 
         return cleanup
     }, [project._id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Sync open files & current file when active workspace changes
+    useEffect(() => {
+        if (activeWorkspace) {
+            const treePaths = getAllPaths()
+            const open = activeWorkspace.openFiles && activeWorkspace.openFiles.length > 0
+                ? activeWorkspace.openFiles
+                : treePaths.slice(0, 3)
+            const current = activeWorkspace.currentFile || open[0] || treePaths[0] || null
+            setOpenFiles(open)
+            setCurrentFile(current)
+        }
+    }, [activeWorkspaceId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Auto-open first file if none is currently open
+    useEffect(() => {
+        if (!currentFile && fileTree && Object.keys(fileTree).length > 0) {
+            const paths = getAllPaths()
+            if (paths.length > 0) {
+                setCurrentFile(paths[0])
+                setOpenFiles(prev => prev.length === 0 ? [paths[0]] : prev)
+            }
+        }
+    }, [fileTree, currentFile, getAllPaths])
 
     // Destroy Lifo sandbox on unmount
     useEffect(() => () => destroyLifoSandbox(), [])
@@ -203,6 +367,8 @@ const Project = () => {
             _id: crypto.randomUUID(),
             message,
             sender: user,
+            workspaceId: activeWorkspaceId,
+            workspaceFileTree: fileTreeRef.current,
             timestamp: new Date().toISOString(),
             reactions: [],
         }
@@ -213,7 +379,7 @@ const Project = () => {
         setTimeout(() => {
             if (messageBox.current) messageBox.current.scrollTop = messageBox.current.scrollHeight
         }, 100)
-    }, [message, user])
+    }, [message, user, activeWorkspaceId, fileTreeRef])
 
     // ── Reaction handler ──────────────────────────────────────────────────────
     const handleReaction = useCallback((messageId, emoji) => {
@@ -312,6 +478,8 @@ const Project = () => {
                 _id: crypto.randomUUID(),
                 message: message.trim() || `Shared ${uploadedFiles.length} file${uploadedFiles.length > 1 ? 's' : ''}`,
                 sender: user,
+                workspaceId: activeWorkspaceId,
+                workspaceFileTree: fileTreeRef.current,
                 timestamp: new Date().toISOString(),
                 files: uploadedFiles,
                 reactions: [],
@@ -323,7 +491,7 @@ const Project = () => {
             toast.success('Files uploaded successfully!')
         } catch { toast.error('Failed to upload files') }
         finally { setUploadingFiles(false) }
-    }, [message, user])
+    }, [message, user, activeWorkspaceId, fileTreeRef])
 
     const handleFileDownload = useCallback(async (fileUrl, fileName) => {
         try {
@@ -390,7 +558,7 @@ const Project = () => {
         axios.put('/projects/add-user', {
             projectId: project._id,
             users: Array.from(selectedUserId),
-        }).then(res => {
+        }).then(() => {
             toast.success('Invitations sent!')
             setIsModalOpen(false)
             setSelectedUserId(new Set())
@@ -407,6 +575,22 @@ const Project = () => {
         })
     }, [])
 
+    // ── 1-Click Auto Debugging ────────────────────────────────────────────────
+    const handleFixWithAi = useCallback((errorInfo) => {
+        const fixPrompt = `@ai Fix this runtime error: "${errorInfo.title}" in file "${errorInfo.file || 'project'}". Output updated fileTree.`
+        setMessage(fixPrompt)
+        setIsAiThinking(true)
+        sendMessage('project-message', {
+            _id: crypto.randomUUID(),
+            message: fixPrompt,
+            sender: { _id: user._id, email: user.email },
+            workspaceId: activeWorkspaceId,
+            workspaceFileTree: fileTreeRef.current,
+            timestamp: new Date().toISOString(),
+        })
+        toast.success('Sent error details to NeuraChat AI for auto-fix! 🪄')
+    }, [user, setMessage, activeWorkspaceId, fileTreeRef])
+
     // ── Run project ───────────────────────────────────────────────────────────
     const handleRun = useCallback(() => {
         runProject(fileTreeRef.current)
@@ -422,9 +606,6 @@ const Project = () => {
             {/* ── Top Header ── */}
             <ProjectHeader
                 project={project}
-                isSidePanelOpen={isSidePanelOpen}
-                onToggleSidePanel={() => setIsSidePanelOpen(p => !p)}
-                onOpenAddMember={() => setIsModalOpen(true)}
                 inviteCopied={inviteCopied}
                 isGeneratingInvite={isGeneratingInvite}
                 onCopyInviteLink={handleCopyInviteLink}
@@ -432,6 +613,9 @@ const Project = () => {
 
             {/* ── Main layout ── */}
             <div className="flex flex-1 overflow-hidden min-h-0">
+                {isActivityPanelOpen && (
+                    <ActivityPanel onClose={() => setIsActivityPanelOpen(false)} />
+                )}
 
                 {/* ── Left Panel: Chat + Tasks ── */}
                 <ChatPanel
@@ -452,12 +636,33 @@ const Project = () => {
                     onFileDownload={handleFileDownload}
                     activeTab={activeTab}
                     setActiveTab={setActiveTab}
-                    isSidePanelOpen={isSidePanelOpen}
-                    setIsSidePanelOpen={setIsSidePanelOpen}
                     onCreateTask={handleCreateTask}
                     onUpdateTask={handleUpdateTask}
                     onDeleteTask={handleDeleteTask}
                     onToggleTask={handleToggleTask}
+                />
+
+                {/* ── Workspace Sidebar ── */}
+                <WorkspaceSidebar
+                    workspaces={workspaces}
+                    activeWorkspaceId={activeWorkspaceId}
+                    onSwitchWorkspace={(wsId) => {
+                        switchWorkspace(wsId)
+                        setOpenFiles([])
+                        setCurrentFile(null)
+                    }}
+                    onCreateWorkspace={async (promptStr) => {
+                        const newWs = await createWorkspace(promptStr, {})
+                        setOpenFiles([])
+                        setCurrentFile(null)
+                        return newWs
+                    }}
+                    onRenameWorkspace={renameWorkspace}
+                    onDuplicateWorkspace={duplicateWorkspace}
+                    onDeleteWorkspace={deleteWorkspace}
+                    onTogglePinWorkspace={togglePinWorkspace}
+                    isOpen={isWorkspaceSidebarOpen}
+                    onClose={() => setIsWorkspaceSidebarOpen(false)}
                 />
 
                 {/* ── Middle: File Explorer + Editor ── */}
@@ -471,6 +676,8 @@ const Project = () => {
                         onDownloadZip={downloadProjectAsZip}
                         onCreateFile={handleCreateFile}
                         onDeleteFile={handleDeleteFile}
+                        activeWorkspaceName={activeWorkspace?.name || 'Main Workspace'}
+                        onToggleWorkspaceSidebar={() => setIsWorkspaceSidebarOpen(p => !p)}
                     />
 
                     <CodeEditor
@@ -481,6 +688,7 @@ const Project = () => {
                         onFileChange={updateFile}
                         onCloseFile={closeFile}
                         onSetCurrentFile={setCurrentFile}
+                        logs={logs}
                         terminalOutput={terminalOutput}
                         onClearTerminal={clearTerminal}
                         isRunning={isRunning}
@@ -524,6 +732,7 @@ const Project = () => {
                         isRunning={isRunning}
                         runtimeStatus={runtimeStatus}
                         terminalOutput={terminalOutput}
+                        onRun={handleRun}
                     />
                 </section>
             </div>
@@ -564,6 +773,50 @@ const Project = () => {
                     </div>
                 )}
             </Modal>
+
+            {/* ── VS Code Bottom Status Bar ── */}
+            <StatusBar
+                activeLanguage={currentFile ? (currentFile.endsWith('.jsx') || currentFile.endsWith('.js') ? 'JavaScript' : currentFile.split('.').pop()?.toUpperCase() || 'Text') : 'JavaScript'}
+                activeWorkspaceName={activeWorkspace?.name || 'Main Workspace'}
+                runtimeStatus={runtimeStatus}
+                isRunning={isRunning}
+                aiDockPosition={aiDockPosition}
+                onToggleAiDock={toggleAiDock}
+                onToggleWorkspaceSidebar={() => setIsWorkspaceSidebarOpen(p => !p)}
+                onRunProject={handleRun}
+                onOpenCommandPalette={() => { setCommandPaletteMode('commands'); setIsCommandPaletteOpen(true) }}
+            />
+
+            {/* ── Command Palette Modal ── */}
+            <CommandPalette
+                isOpen={isCommandPaletteOpen}
+                onClose={() => setIsCommandPaletteOpen(false)}
+                mode={commandPaletteMode}
+                fileTree={fileTree}
+                onSelectFile={(filePath) => {
+                    setCurrentFile(filePath)
+                    setOpenFiles(prev => [...new Set([...prev, filePath])])
+                }}
+            />
+
+            {/* ── AI Context & Memory Viewer Modal ── */}
+            <AiContextViewer
+                isOpen={isAiContextViewerOpen}
+                onClose={() => setIsAiContextViewerOpen(false)}
+                memory={aiMemory}
+                fileTree={fileTree}
+            />
+
+            {/* ── Version History Modal ── */}
+            <VersionHistoryModal
+                isOpen={isHistoryModalOpen}
+                onClose={() => setIsHistoryModalOpen(false)}
+                workspaceId={activeWorkspaceId}
+                workspaceName={activeWorkspace?.name || 'Main Workspace'}
+                onRestoreSnapshot={(restoredTree) => {
+                    setFileTree(restoredTree)
+                }}
+            />
         </div>
     )
 }

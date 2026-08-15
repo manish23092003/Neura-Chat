@@ -43,14 +43,9 @@
                   aria-label="User menu"
                 >
                   <Avatar email={user.email} name={user.name} size="sm" />
-                  <div className="hidden md:flex flex-col items-start leading-none">
-                    <span className="text-[13px] font-[600] text-[var(--nc-text-primary)]">
-                      {user.name || user.email?.split('@')[0] || 'User'}
-                    </span>
-                    <span className="text-[11px] truncate max-w-[100px]" style={{ color: 'var(--nc-text-muted)' }}>
-                      {user.email}
-                    </span>
-                  </div>
+                  <span className="hidden md:block text-[13px] font-[600] text-[var(--nc-text-primary)]">
+                    {user.name || user.email?.split('@')[0] || 'User'}
+                  </span>
                   <i className="ri-arrow-down-s-line text-[14px] hidden md:block" style={{ color: 'var(--nc-text-muted)' }} />
                 </button>
               }

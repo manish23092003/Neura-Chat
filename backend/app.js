@@ -22,20 +22,34 @@ connect();
 const app = express();
 
 // ── Security headers (helmet) ────────────────────────────────────────────────
-// Disable contentSecurityPolicy in dev to allow Vite HMR; enable in production.
 app.use(helmet({
-    contentSecurityPolicy: process.env.NODE_ENV === 'production',
-    crossOriginEmbedderPolicy: false, // Required for SharedArrayBuffer / WebContainer
+    contentSecurityPolicy: process.env.NODE_ENV === 'production' ? {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://accounts.google.com", "https://unpkg.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net", "https://unpkg.com"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net"],
+            imgSrc: ["'self'", "data:", "blob:", "https:", "http:"],
+            connectSrc: ["'self'", "ws:", "wss:", "http:", "https:"],
+            workerSrc: ["'self'", "blob:"],
+            frameSrc: ["'self'", "https://accounts.google.com", "http://localhost:*", "blob:"],
+            frameAncestors: ["'self'"],
+        }
+    } : false,
+    crossOriginEmbedderPolicy: false, // Required for SharedArrayBuffer / WebContainers
 }));
 
 // ── CORS ─────────────────────────────────────────────────────────────────────
-const allowedOrigins = process.env.FRONTEND_URL
-    ? [process.env.FRONTEND_URL]
-    : ['http://localhost:5173', 'http://localhost:3000'];
+const allowedOrigins = [
+    'https://neura-chat-omega.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL.replace(/\/$/, '')] : [])
+];
 
 app.use(cors({
     origin: (origin, cb) => {
-        // Allow requests with no origin (mobile apps, curl, etc.)
+        // Allow requests with no origin (mobile apps, curl, server-to-server)
         if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
         cb(new Error(`CORS: origin "${origin}" not allowed`));
     },
@@ -43,19 +57,16 @@ app.use(cors({
 }));
 
 // ── Response compression (gzip) ──────────────────────────────────────────────
-// Compress all responses above the threshold (~1 KB).
 app.use(compression({
-    level: 6,              // zlib compression level (1=fastest, 9=best)
-    threshold: 1024,       // only compress responses > 1 KB
+    level: 6,
+    threshold: 1024,
     filter: (req, res) => {
-        // Don't compress responses with no-transform header
         if (req.headers['x-no-compression']) return false;
         return compression.filter(req, res);
     },
 }));
 
 // ── HTTP request logging ─────────────────────────────────────────────────────
-// Use 'combined' in production for full logs; 'dev' for coloured dev output.
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 // ── Body parsers ─────────────────────────────────────────────────────────────
@@ -63,32 +74,48 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
-// ── Rate limiting ────────────────────────────────────────────────────────────
-// Strict limit for auth routes to prevent brute-force attacks.
+// ── Rate limiters ────────────────────────────────────────────────────────────
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 20,                   // max 20 login/register attempts per IP
+    max: 20,                   // max 20 attempts per IP
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Too many authentication attempts. Please try again in 15 minutes.' },
 });
 
-// General API limit — generous, just prevents abuse.
-const apiLimiter = rateLimit({
-    windowMs: 60 * 1000,  // 1 minute
-    max: 300,             // 300 requests/minute per IP
+const aiLimiter = rateLimit({
+    windowMs: 60 * 1000,       // 1 minute
+    max: 30,                   // max 30 AI requests per minute per IP
     standardHeaders: true,
     legacyHeaders: false,
-    skip: (req) => req.path.startsWith('/files'), // file uploads are exempt
+    message: { error: 'AI request limit reached. Please wait a minute before making more requests.' },
 });
 
-app.use('/users/login',    authLimiter);
-app.use('/users/register', authLimiter);
-app.use('/api',            apiLimiter);
+const uploadLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,  // 15 minutes
+    max: 50,                   // max 50 uploads per 15 minutes per IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Upload rate limit exceeded. Please try again later.' },
+});
+
+const apiLimiter = rateLimit({
+    windowMs: 60 * 1000,       // 1 minute
+    max: 300,                  // 300 requests/minute per IP
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+app.use('/users/login',       authLimiter);
+app.use('/users/register',    authLimiter);
+app.use('/users/google-auth', authLimiter);
+app.use('/ai',                aiLimiter);
+app.use('/files/upload',      uploadLimiter);
+app.use('/projects',          apiLimiter);
 
 // ── Static files ──────────────────────────────────────────────────────────────
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
-    maxAge: '7d',       // cache static uploads for 7 days
+    maxAge: '7d',
     etag: true,
     lastModified: true,
 }));
@@ -107,6 +134,16 @@ app.get('/health', (req, res) => {
 
 app.get('/', (req, res) => {
     res.json({ message: 'NeuraChat API is running.' });
+});
+
+// ── Global Error Handler ──────────────────────────────────────────────────────
+app.use((err, req, res, next) => {
+    console.error(`[Unhandled Server Error] ${req.method} ${req.path}:`, err.message);
+    const statusCode = err.status || err.statusCode || 500;
+    res.status(statusCode).json({
+        success: false,
+        error: process.env.NODE_ENV === 'production' ? 'Internal server error' : (err.message || 'Something went wrong')
+    });
 });
 
 export default app;

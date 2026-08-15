@@ -7,9 +7,24 @@ import axios from '../config/axios'
 import Input from '../components/ui/Input'
 import Button from '../components/ui/Button'
 import Checkbox from '../components/ui/Checkbox'
+import NeuraLogo from '../components/ui/NeuraLogo'
 import Confetti from '../components/Confetti'
 import { validateEmail } from '../utils/emailValidator'
 import { analyzePassword, generateStrongPassword } from '../utils/passwordAnalyzer'
+import useGoogleAuth from '../hooks/useGoogleAuth'
+
+/* ── Google icon (official branded SVG) ── */
+function GoogleIcon({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+      <path fill="none" d="M0 0h48v48H0z" />
+    </svg>
+  )
+}
 
 /* ── Password Strength Indicator ── */
 function PasswordStrength({ analysis }) {
@@ -89,8 +104,15 @@ const Register = () => {
   const [agreeTerms, setAgreeTerms] = useState(false)
   const [formError, setFormError] = useState('')
 
+  const { triggerGoogleLogin, loading: googleLoading, error: googleError } = useGoogleAuth()
+
   const { setUser } = useContext(UserContext)
   const navigate = useNavigate()
+
+  // Show Google errors in the form error banner
+  useEffect(() => {
+    if (googleError) setFormError(googleError)
+  }, [googleError])
 
   useEffect(() => {
     if (email && emailTouched) setEmailValidation(validateEmail(email))
@@ -155,6 +177,7 @@ const Register = () => {
   }, [email, password, confirmPassword, agreeTerms, setUser, navigate])
 
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword
+  const isAnyLoading = loading || googleLoading
 
   return (
     <div
@@ -180,11 +203,8 @@ const Register = () => {
         >
           {/* Header */}
           <div className="flex flex-col items-center mb-7">
-            <div
-              className="w-12 h-12 rounded-[12px] flex items-center justify-center mb-5"
-              style={{ backgroundColor: 'var(--nc-primary)' }}
-            >
-              <i className="ri-user-add-line text-[22px]" style={{ color: 'var(--nc-bg)' }} />
+            <div className="mb-5">
+              <NeuraLogo size={48} animated />
             </div>
             <h1 className="text-[24px] font-[700] text-[var(--nc-text-primary)] tracking-tight mb-1">
               Create your account
@@ -304,12 +324,66 @@ const Register = () => {
                 variant="primary"
                 loading={loading}
                 fullWidth
-                disabled={!agreeTerms}
+                disabled={!agreeTerms || isAnyLoading}
               >
                 Create account
               </Button>
             </motion.div>
           </form>
+
+          {/* ── OR divider ── */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.28 }}
+            className="flex items-center gap-3 my-5"
+          >
+            <div className="flex-1 h-px" style={{ background: 'var(--nc-border)' }} />
+            <span className="text-[12px] font-[600] uppercase tracking-wider" style={{ color: 'var(--nc-text-muted)' }}>
+              or
+            </span>
+            <div className="flex-1 h-px" style={{ background: 'var(--nc-border)' }} />
+          </motion.div>
+
+          {/* ── Google sign-up button ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <button
+              type="button"
+              onClick={triggerGoogleLogin}
+              disabled={isAnyLoading}
+              className="w-full h-[44px] rounded-[12px] flex items-center justify-center gap-3 text-[14px] font-[600] transition-all duration-150 cursor-pointer"
+              style={{
+                background: 'var(--nc-surface)',
+                border: '1px solid var(--nc-border)',
+                color: 'var(--nc-text-primary)',
+                opacity: isAnyLoading ? 0.6 : 1,
+              }}
+              onMouseEnter={(e) => {
+                if (!isAnyLoading) {
+                  e.currentTarget.style.background = 'var(--nc-elevated)'
+                  e.currentTarget.style.borderColor = 'var(--nc-text-muted)'
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--nc-surface)'
+                e.currentTarget.style.borderColor = 'var(--nc-border)'
+              }}
+            >
+              {googleLoading ? (
+                <div
+                  className="w-[18px] h-[18px] rounded-full border-2 border-t-transparent animate-spin"
+                  style={{ borderColor: 'var(--nc-text-muted)', borderTopColor: 'transparent' }}
+                />
+              ) : (
+                <GoogleIcon size={18} />
+              )}
+              Continue with Google
+            </button>
+          </motion.div>
 
           {/* Sign in link */}
           <motion.p

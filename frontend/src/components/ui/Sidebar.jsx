@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useContext } from 'react'
 import { UserContext } from '../../context/user.context'
 import Avatar from './Avatar'
+import NeuraLogo from './NeuraLogo'
 
 /**
  * Sidebar — collapsible navigation sidebar
@@ -59,25 +60,12 @@ const Sidebar = ({
           justifyContent: collapsed ? 'center' : 'space-between',
         }}
       >
-        {!collapsed && (
+        {!collapsed ? (
           <div className="flex items-center gap-2.5 overflow-hidden">
-            <div
-              className="w-8 h-8 rounded-[9px] flex items-center justify-center flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #7C5CFF 0%, #5B3FD9 100%)' }}
-            >
-              <i className="ri-sparkling-2-fill text-[var(--nc-text-primary)] text-[16px]" />
-            </div>
-            <span
-              className="text-[15px] font-[700] tracking-tight whitespace-nowrap"
-              style={{
-                background: 'linear-gradient(135deg, #FFFFFF 0%, #A78BFA 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
-              NeuraChat
-            </span>
+            <NeuraLogo size={28} showText animated />
           </div>
+        ) : (
+          <NeuraLogo size={28} animated />
         )}
 
         <button

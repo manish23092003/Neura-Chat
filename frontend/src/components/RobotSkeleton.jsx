@@ -10,7 +10,7 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-mo
  *   - message: Custom string message to display in bubble
  *   - colorTheme: 'purple' | 'cyan' | 'green' | 'gold'
  */
-const RobotSkeleton = ({ state = 'idle', message: customMessage = '', colorTheme = 'purple' }) => {
+const RobotSkeleton = ({ state = 'idle', message: customMessage = '', colorTheme = 'purple', showBubble = false, scale = 0.85 }) => {
     const [isActing, setIsActing] = useState(false)
     const [currentMove, setCurrentMove] = useState('idle') // idle, spin, jump, wave, shake
     const [bubbleMessage, setBubbleMessage] = useState('')
@@ -147,12 +147,17 @@ const RobotSkeleton = ({ state = 'idle', message: customMessage = '', colorTheme
 
     return (
         <div 
-            className="relative group perspective-1000 select-none flex items-center justify-center animate-fade-in" 
-            style={{ width: '250px', height: '330px' }}
+            className="relative group perspective-1000 select-none flex items-center justify-center animate-fade-in shrink-0" 
+            style={{ 
+                width: `${Math.round(250 * scale)}px`, 
+                height: `${Math.round(310 * scale)}px`,
+                transform: `scale(${scale})`,
+                transformOrigin: 'center center'
+            }}
         >
             {/* Telemetry Bubble Message */}
             <AnimatePresence>
-                {bubbleMessage && (
+                {showBubble && bubbleMessage && (
                     <motion.div
                         initial={{ opacity: 0, scale: 0.8, y: 10 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
