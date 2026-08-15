@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useContext, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
@@ -31,6 +31,7 @@ const Login = () => {
   const [formError, setFormError] = useState('')
 
   const { setUser } = useContext(UserContext)
+  const navigate = useNavigate()
   const { triggerGoogleLogin, loading: googleLoading, error: googleError } = useGoogleAuth()
 
   // Email validation

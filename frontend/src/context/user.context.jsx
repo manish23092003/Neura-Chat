@@ -19,8 +19,11 @@ export const UserProvider = ({ children }) => {
                     setUser(res.data.user);
                 })
                 .catch((err) => {
-                    console.log('Token validation failed:', err);
-                    localStorage.removeItem('token');
+                    console.warn('Token validation failed:', err.message);
+                    if (err.response?.status === 401) {
+                        localStorage.removeItem('token');
+                        setUser(null);
+                    }
                 })
                 .finally(() => {
                     setLoading(false);

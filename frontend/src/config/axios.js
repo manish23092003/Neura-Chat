@@ -12,7 +12,6 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://neura-chat-backend
 const axiosInstance = axios.create({
     baseURL: API_BASE_URL,
     timeout: 30000, // 30-second timeout — prevents requests from hanging indefinitely
-    withCredentials: true,
 });
 
 // ── Request interceptor — attach fresh auth token on every request ──────────
@@ -36,10 +35,14 @@ axiosInstance.interceptors.response.use(
         const config = error.config;
 
         // 401 Unauthorized — token expired, redirect to login
-        if (error.response?.status === 401) {
+        // Skip for auth-related endpoints (google-auth, login, register)
+        const requestUrl = config?.url || '';
+        const isAuthEndpoint = requestUrl.includes('google-auth') || requestUrl.includes('/login') || requestUrl.includes('/register');
+        if (error.response?.status === 401 && !isAuthEndpoint) {
             localStorage.removeItem('token');
             // Only redirect if not already on auth pages
-            if (!window.location.pathname.match(/^\/(login|register|invite|$)/)) {
+            const path = window.location.pathname;
+            if (path !== '/' && path !== '/login' && path !== '/register' && !path.startsWith('/invite')) {
                 window.location.href = '/login';
             }
             return Promise.reject(error);
