@@ -1,5 +1,6 @@
 import socket from 'socket.io-client';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://neura-chat-backend-q81j.onrender.com';
 
 let socketInstance = null;
 
@@ -11,7 +12,7 @@ export const initializeSocket = (projectId) => {
     }
 
     if (!socketInstance || !socketInstance.connected) {
-        socketInstance = socket(import.meta.env.VITE_API_URL, {
+        socketInstance = socket(API_BASE_URL, {
             auth: {
                 token: localStorage.getItem('token')
             },

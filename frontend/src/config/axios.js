@@ -7,9 +7,12 @@ const RETRY_DELAY_MS = 800;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ── Axios instance ──────────────────────────────────────────────────────────
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://neura-chat-backend-q81j.onrender.com';
+
 const axiosInstance = axios.create({
-    baseURL: import.meta.env.VITE_API_URL,
+    baseURL: API_BASE_URL,
     timeout: 30000, // 30-second timeout — prevents requests from hanging indefinitely
+    withCredentials: true,
 });
 
 // ── Request interceptor — attach fresh auth token on every request ──────────
