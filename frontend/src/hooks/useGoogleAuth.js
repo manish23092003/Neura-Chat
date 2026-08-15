@@ -12,19 +12,19 @@ const GOOGLE_CLIENT_ID =
 const GIS_SCRIPT_SRC = 'https://accounts.google.com/gsi/client'
 
 /**
- * useGoogleAuth — shared hook for Google Sign-In via Google Identity Services.
+ * useGoogleAuth — robust Google Sign-In hook using Google Identity Services OAuth 2.0 Web Popup.
  *
- * Loads the GIS script once, initializes the Google client, and renders the
- * official Google button directly into `buttonContainerRef` (if provided) or
- * provides `triggerGoogleLogin` for programmatic One Tap.
+ * Uses `window.google.accounts.oauth2.initTokenClient` to open the standard
+ * Google account chooser popup (`accounts.google.com/o/oauth2/v2/auth`).
+ * Sends the verified access token to POST /users/google-auth.
  *
- * @param {React.RefObject} [buttonContainerRef] - Optional ref to mount the official Google button into
  * @returns {{ triggerGoogleLogin, loading, error, scriptReady }}
  */
-export default function useGoogleAuth(buttonContainerRef = null) {
+export default function useGoogleAuth() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [scriptReady, setScriptReady] = useState(false)
+  const tokenClientRef = useRef(null)
 
   const { setUser } = useContext(UserContext)
   const navigate = useNavigate()
@@ -34,12 +34,11 @@ export default function useGoogleAuth(buttonContainerRef = null) {
     if (!GOOGLE_CLIENT_ID) return
 
     // Check if the script is already loaded
-    if (window.google?.accounts?.id) {
+    if (window.google?.accounts?.oauth2) {
       setScriptReady(true)
       return
     }
 
-    // Check if the script tag already exists (loading in progress)
     const existingScript = document.querySelector(`script[src="${GIS_SCRIPT_SRC}"]`)
     if (existingScript) {
       existingScript.addEventListener('load', () => setScriptReady(true))
@@ -58,11 +57,18 @@ export default function useGoogleAuth(buttonContainerRef = null) {
     document.head.appendChild(script)
   }, [])
 
-  // ── Handle the Google credential response ─────────────────────────────────
-  const handleCredentialResponse = useCallback(
-    async (response) => {
-      if (!response?.credential) {
-        setError('Google Sign-In was cancelled')
+  // ── Handle Token Response from Google OAuth2 Popup ────────────────────────
+  const handleTokenResponse = useCallback(
+    async (tokenResponse) => {
+      if (tokenResponse.error) {
+        console.error('Google OAuth error:', tokenResponse.error)
+        setError(tokenResponse.error_description || 'Google Sign-In was cancelled')
+        setLoading(false)
+        return
+      }
+
+      if (!tokenResponse.access_token) {
+        setLoading(false)
         return
       }
 
@@ -71,7 +77,7 @@ export default function useGoogleAuth(buttonContainerRef = null) {
 
       try {
         const res = await axios.post('/users/google-auth', {
-          credential: response.credential,
+          accessToken: tokenResponse.access_token,
         })
 
         localStorage.setItem('token', res.data.token)
@@ -100,59 +106,47 @@ export default function useGoogleAuth(buttonContainerRef = null) {
     [setUser, navigate]
   )
 
-  // ── Initialize GIS & Render Button ─────────────────────────────────────────
+  // ── Initialize OAuth2 Token Client once script is ready ───────────────────
   useEffect(() => {
     if (!scriptReady || !GOOGLE_CLIENT_ID) return
-    if (!window.google?.accounts?.id) return
+    if (!window.google?.accounts?.oauth2) return
 
-    window.google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: handleCredentialResponse,
-      auto_select: false,
-      cancel_on_tap_outside: true,
-    })
-
-    // If a button container ref is provided, render the official Google button into it
-    if (buttonContainerRef?.current) {
-      buttonContainerRef.current.innerHTML = ''
-      window.google.accounts.id.renderButton(buttonContainerRef.current, {
-        type: 'standard',
-        theme: 'filled_black',
-        size: 'large',
-        width: '100%',
-        text: 'continue_with',
-        shape: 'rectangular',
-        logo_alignment: 'left',
+    try {
+      tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: 'email profile openid',
+        callback: handleTokenResponse,
       })
+    } catch (err) {
+      console.error('Failed to initialize Google OAuth2 client:', err)
     }
-  }, [scriptReady, handleCredentialResponse, buttonContainerRef])
+  }, [scriptReady, handleTokenResponse])
 
-  // ── Programmatic Fallback ──────────────────────────────────────────────────
+  // ── Trigger the Google OAuth2 popup ───────────────────────────────────────
   const triggerGoogleLogin = useCallback(() => {
     if (!GOOGLE_CLIENT_ID) {
       toast.error('Google Sign-In is not configured. Please check VITE_GOOGLE_CLIENT_ID.')
       return
     }
 
-    if (!window.google?.accounts?.id) {
-      toast.error('Google Sign-In is still loading. Please wait a moment.')
+    // Lazy init if ref is not populated yet
+    if (!tokenClientRef.current && window.google?.accounts?.oauth2) {
+      tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: 'email profile openid',
+        callback: handleTokenResponse,
+      })
+    }
+
+    if (!tokenClientRef.current) {
+      toast.error('Google Sign-In is still loading. Please try again in a moment.')
       return
     }
 
     setError('')
-
-    // Standard prompt
-    window.google.accounts.id.prompt((notification) => {
-      if (notification.isNotDisplayed()) {
-        const reason = notification.getNotDisplayedReason()
-        if (reason === 'opt_out_or_no_session') {
-          toast.error('Please make sure you are signed in to Google.')
-        } else {
-          console.log('Google One Tap not displayed:', reason)
-        }
-      }
-    })
-  }, [])
+    // Opens the authentic Google account chooser popup window
+    tokenClientRef.current.requestAccessToken({ prompt: 'select_account' })
+  }, [handleTokenResponse])
 
   return {
     triggerGoogleLogin,

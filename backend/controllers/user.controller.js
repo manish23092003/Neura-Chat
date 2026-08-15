@@ -206,43 +206,62 @@ export const deleteAccountController = async (req, res) => {
 
 export const googleAuthController = async (req, res) => {
     try {
-        const { credential } = req.body;
+        const { credential, accessToken } = req.body;
 
-        if (!credential || typeof credential !== 'string') {
-            return res.status(400).json({ message: 'Valid Google credential token is required' });
+        if ((!credential || typeof credential !== 'string') && (!accessToken || typeof accessToken !== 'string')) {
+            return res.status(400).json({ message: 'Valid Google credential or access token is required' });
         }
 
-        if (!process.env.GOOGLE_CLIENT_ID) {
-            return res.status(500).json({ message: 'Google authentication is not configured on the server' });
-        }
+        let googleId, googleEmail, googleName, googlePicture;
 
-        // Step 1: Verify the Google ID token server-side
-        let ticket;
-        try {
-            ticket = await googleClient.verifyIdToken({
-                idToken: credential,
-                audience: process.env.GOOGLE_CLIENT_ID,
+        if (accessToken) {
+            // Step 1A: Verify via Google OAuth2 UserInfo API
+            const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: `Bearer ${accessToken}` }
             });
-        } catch (verifyErr) {
-            return res.status(401).json({ message: 'Invalid or expired Google credential' });
+
+            if (!userInfoRes.ok) {
+                return res.status(401).json({ message: 'Invalid or expired Google access token' });
+            }
+
+            const userInfo = await userInfoRes.json();
+            if (!userInfo || !userInfo.email) {
+                return res.status(401).json({ message: 'Google account does not have an email address' });
+            }
+
+            googleId = userInfo.sub;
+            googleEmail = userInfo.email.toLowerCase().trim();
+            googleName = (userInfo.name || '').slice(0, 50);
+            googlePicture = (userInfo.picture || '').slice(0, 500);
+        } else {
+            // Step 1B: Verify the Google ID token server-side
+            const serverClientId = process.env.GOOGLE_CLIENT_ID || '931307926069-ocaftvtmfaiiil49gkev35g28nti1vc0.apps.googleusercontent.com';
+            let ticket;
+            try {
+                ticket = await googleClient.verifyIdToken({
+                    idToken: credential,
+                    audience: serverClientId,
+                });
+            } catch (verifyErr) {
+                return res.status(401).json({ message: 'Invalid or expired Google credential' });
+            }
+
+            const payload = ticket.getPayload();
+
+            // Validate required claims
+            if (!payload || !payload.email) {
+                return res.status(401).json({ message: 'Google account does not have an email address' });
+            }
+
+            if (!payload.email_verified) {
+                return res.status(401).json({ message: 'Google email is not verified' });
+            }
+
+            googleId = payload.sub;
+            googleEmail = payload.email.toLowerCase().trim();
+            googleName = (payload.name || '').slice(0, 50);
+            googlePicture = (payload.picture || '').slice(0, 500);
         }
-
-        const payload = ticket.getPayload();
-
-        // Step 2: Validate required claims
-        if (!payload || !payload.email) {
-            return res.status(401).json({ message: 'Google account does not have an email address' });
-        }
-
-        if (!payload.email_verified) {
-            return res.status(401).json({ message: 'Google email is not verified' });
-        }
-
-        // Step 3: Extract only verified claims
-        const googleId = payload.sub;
-        const googleEmail = payload.email.toLowerCase().trim();
-        const googleName = (payload.name || '').slice(0, 50);
-        const googlePicture = (payload.picture || '').slice(0, 500);
 
         // Step 4: Find existing user
         let user = await userModel.findOne({ 'google.id': googleId });
