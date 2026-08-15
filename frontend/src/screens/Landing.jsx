@@ -161,201 +161,166 @@ const Landing = () => {
           </motion.div>
         </section>
 
-        {/* ─── PRODUCT WORKSPACE DEMO ─── */}
+        {/* ─── PRODUCT WORKSPACE DEMO (MATTE BLACK THEME) ─── */}
         <section className="w-full max-w-[1280px] px-3 md:px-6 mb-32">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: 'easeOut', delay: 0.15 }}
-            className="w-full rounded-[14px] border border-[#2B1B48] bg-[#0A0A0E] shadow-[0_30px_90px_-15px_rgba(124,58,237,0.22)] overflow-hidden flex flex-col text-left font-sans select-none"
+            className="w-full rounded-[14px] border border-[#27272a] bg-[#09090b] shadow-[0_30px_90px_-15px_rgba(0,0,0,0.85)] overflow-hidden flex flex-col text-left font-sans select-none"
             style={{
-              boxShadow: '0 20px 80px -10px rgba(99, 102, 241, 0.15), 0 0 0 1px rgba(139, 92, 246, 0.15)'
+              boxShadow: '0 25px 80px -15px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.06)'
             }}
           >
             {/* ═══ Top Project Header Bar ═══ */}
-            <div className="h-10 px-4 border-b border-[#1E1B2E] bg-[#0E0B1A] flex items-center justify-between">
+            <div className="h-10 px-4 border-b border-[#27272a] bg-[#121215] flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <button className="text-[#8E8A9F] hover:text-white transition-colors"><i className="ri-arrow-left-line text-[14px]" /></button>
-                <div className="flex items-center gap-1.5 font-semibold text-[13px] text-[#F3F1FA]">
-                  <i className="ri-folder-3-fill text-[#3B82F6] text-[15px]" />
-                  <span>first</span>
+                <button className="text-[#71717a] hover:text-white transition-colors"><i className="ri-arrow-left-line text-[14px]" /></button>
+                <div className="flex items-center gap-1.5 font-semibold text-[13px] text-[#f4f4f5]">
+                  <i className="ri-folder-3-fill text-[#3b82f6] text-[15px]" />
+                  <span>demo-workspace</span>
                 </div>
               </div>
 
-              {/* Right: Collaborators & Invite Button */}
+              {/* Right: Collaborators & Join Button */}
               <div className="flex items-center gap-3">
                 <div className="flex items-center -space-x-1.5">
-                  <div className="w-5 h-5 rounded-full bg-[#06B6D4] text-[9px] font-bold text-[#0A0A0E] flex items-center justify-center border border-[#0E0B1A]">M</div>
-                  <div className="w-5 h-5 rounded-full bg-[#3B82F6] text-[9px] font-bold text-white flex items-center justify-center border border-[#0E0B1A]">M</div>
-                  <div className="w-5 h-5 rounded-full bg-[#0EA5E9] text-[9px] font-bold text-white flex items-center justify-center border border-[#0E0B1A]">M</div>
+                  <div className="w-5 h-5 rounded-full bg-[#3b82f6] text-[9px] font-bold text-white flex items-center justify-center border border-[#121215]">A</div>
+                  <div className="w-5 h-5 rounded-full bg-[#10b981] text-[9px] font-bold text-white flex items-center justify-center border border-[#121215]">B</div>
+                  <div className="w-5 h-5 rounded-full bg-[#6366f1] text-[9px] font-bold text-white flex items-center justify-center border border-[#121215]">C</div>
                 </div>
-                <span className="text-[11px] text-[#8E8A9F] hidden sm:inline-block">3 Collaborators</span>
-                <button className="px-2.5 py-1 rounded-[6px] bg-[#3B82F6] hover:bg-[#2563EB] text-white text-[11px] font-semibold flex items-center gap-1 shadow-sm transition-all">
-                  <i className="ri-user-add-line text-[12px]" />
-                  <span>Invite</span>
-                </button>
+                <span className="text-[11px] text-[#a1a1aa] hidden sm:inline-block">Realtime Collaboration</span>
+                <Link to="/login">
+                  <button className="px-2.5 py-1 rounded-[6px] bg-[#3b82f6] hover:bg-[#2563eb] text-white text-[11px] font-semibold flex items-center gap-1 shadow-sm transition-all cursor-pointer">
+                    <i className="ri-user-add-line text-[12px]" />
+                    <span>Join Workspace</span>
+                  </button>
+                </Link>
               </div>
             </div>
 
             {/* ═══ Main 3-Pane Body ═══ */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[580px] bg-[#09080F] divide-y lg:divide-y-0 lg:divide-x divide-[#1E1B2E]">
+            <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[580px] bg-[#09090b] divide-y lg:divide-y-0 lg:divide-x divide-[#27272a]">
               
-              {/* ── Left Pane: Chat & Tasks (col-span-3) ── */}
-              <div className="lg:col-span-3 flex flex-col justify-between bg-[#0B0914] h-full border-b lg:border-b-0 border-[#1E1B2E]">
+              {/* ── Left Pane: Chat & Tasks (Locked Preview Before Login) ── */}
+              <div className="lg:col-span-3 flex flex-col justify-between bg-[#0f0f12] h-full border-b lg:border-b-0 border-[#27272a]">
                 {/* Chat/Tasks Tabs */}
-                <div className="h-10 border-b border-[#1E1B2E] px-3 flex items-center gap-4 text-[12px] font-medium bg-[#0E0B1A]">
-                  <div className="flex items-center gap-1.5 text-white border-b-2 border-[#7C3AED] h-full px-1">
-                    <i className="ri-message-3-line text-[13px]" />
-                    <span>Chat</span>
+                <div className="h-10 border-b border-[#27272a] px-3 flex items-center justify-between text-[12px] font-medium bg-[#141418]">
+                  <div className="flex items-center gap-4 h-full">
+                    <div className="flex items-center gap-1.5 text-white border-b-2 border-[#3b82f6] h-full px-1">
+                      <i className="ri-message-3-line text-[13px]" />
+                      <span>Chat</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[#71717a] hover:text-white cursor-pointer h-full px-1">
+                      <i className="ri-task-line text-[13px]" />
+                      <span>Tasks</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 text-[#827D95] hover:text-white cursor-pointer h-full px-1">
-                    <i className="ri-task-line text-[13px]" />
-                    <span>Tasks</span>
-                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-[#27272a] text-[#a1a1aa] font-mono flex items-center gap-1">
+                    <i className="ri-lock-line text-[10px]" /> Preview
+                  </span>
                 </div>
 
-                {/* Message Stream */}
-                <div className="p-3 space-y-3 flex-1 overflow-hidden font-sans text-[11.5px]">
-                  {/* User Message 1 */}
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <div className="w-4 h-4 rounded-full bg-[#EF4444] text-[8px] font-bold text-white flex items-center justify-center">M</div>
-                      <span className="text-[10px] text-[#868199] truncate">manish.soni232003@gmail.com</span>
-                    </div>
-                    <div className="px-3 py-2 rounded-[10px] bg-[#1A1629] border border-[#2B2440] text-[#EDEAF5] w-fit max-w-[90%]">
-                      Hello
-                    </div>
-                    <span className="text-[9px] text-[#635F74] mt-0.5 block">Aug 14, 05:24 PM</span>
+                {/* Locked / Clean Reference State */}
+                <div className="p-6 flex-1 flex flex-col items-center justify-center text-center font-sans">
+                  <div className="w-12 h-12 rounded-[12px] bg-[#18181b] border border-[#27272a] flex items-center justify-center text-[#3b82f6] mb-3 shadow-inner">
+                    <i className="ri-lock-2-line text-[22px]" />
                   </div>
-
-                  {/* Message 2 */}
-                  <div className="flex flex-col items-end">
-                    <div className="px-3 py-2 rounded-[10px] bg-[#1A1629] border border-[#2B2440] text-[#EDEAF5]">
-                      Hello
-                    </div>
-                    <span className="text-[9px] text-[#635F74] mt-0.5 mr-1">Aug 14, 05:25 PM</span>
-                  </div>
-
-                  {/* Message 3 Prompt */}
-                  <div className="flex flex-col items-end">
-                    <div className="px-3 py-2 rounded-[10px] bg-[#1A1629] border border-[#2B2440] text-[#EDEAF5]">
-                      @ai create a simple calender
-                    </div>
-                    <span className="text-[9px] text-[#635F74] mt-0.5 mr-1">Aug 14, 05:49 PM</span>
-                  </div>
-
-                  {/* AI Response Card */}
-                  <div className="p-2.5 rounded-[10px] bg-[#120F20] border border-[#2B2440] space-y-2">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <div className="flex items-center gap-1.5 font-semibold text-[#E9E6F5]">
-                        <i className="ri-robot-2-line text-[#8B5CF6]" />
-                        <span>NeuraChat AI</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-[#7C7790] text-[11px]">
-                        <button className="hover:text-white flex items-center gap-0.5"><i className="ri-file-copy-line" /> Copy</button>
-                        <button className="hover:text-white"><i className="ri-more-fill" /></button>
-                      </div>
-                    </div>
-                    <p className="text-[10.5px] text-[#B8B4C9] leading-relaxed">
-                      I've created a simple, interactive calendar using plain HTML, CSS, and JavaScript. It displays the current month and year, highlights the current day, and allows you to navigate to previous and next months. The calendar dynamically adjusts for different month lengths and leap years.
-                    </p>
-                    {/* Attachment preview */}
-                    <div className="p-2 rounded-[8px] bg-[#090810] border border-[#221D33] flex items-center justify-between text-[10.5px]">
-                      <div className="flex items-center gap-2">
-                        <i className="ri-folder-3-fill text-[#F59E0B] text-[14px]" />
-                        <div>
-                          <div className="font-semibold text-[#E2DFED]">Generated Workspace</div>
-                          <div className="text-[9px] text-[#7C7790]">3 files • HTML/CSS/JS</div>
-                        </div>
-                      </div>
-                      <span className="text-[#3B82F6] text-[10px] font-medium flex items-center gap-0.5">View files <i className="ri-arrow-down-s-line" /></span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Chat Composer */}
-                <div className="p-2.5 border-t border-[#1E1B2E] bg-[#0E0B1A]">
-                  <div className="w-full h-9 rounded-[8px] border border-[#27213A] bg-[#07060C] flex items-center px-2.5 gap-2">
-                    <i className="ri-attachment-2 text-[#77728B] hover:text-white cursor-pointer text-[13px]" />
-                    <span className="text-[11px] text-[#726E86] flex-1 truncate">Type @ai to ask NeuraChat AI...</span>
-                    <button className="w-6 h-6 rounded-[5px] bg-[#3B82F6] text-white flex items-center justify-center hover:bg-[#2563EB] transition-colors">
-                      <i className="ri-send-plane-fill text-[11px]" />
+                  <div className="text-[13px] font-semibold text-[#f4f4f5] mb-1">Interactive Chat Locked</div>
+                  <p className="text-[11px] text-[#71717a] max-w-[210px] leading-relaxed mb-4">
+                    Sign in to chat with NeuraChat AI, generate fullstack code, and collaborate in real time.
+                  </p>
+                  <Link to="/login">
+                    <button className="px-3.5 py-1.5 rounded-[6px] bg-[#3b82f6] hover:bg-[#2563eb] text-white text-[11.5px] font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer">
+                      <i className="ri-login-box-line text-[12px]" />
+                      <span>Sign In to Unlock</span>
                     </button>
+                  </Link>
+                </div>
+
+                {/* Locked Composer */}
+                <div className="p-2.5 border-t border-[#27272a] bg-[#121215]">
+                  <div className="w-full h-9 rounded-[8px] border border-[#27272a] bg-[#09090b] flex items-center px-2.5 gap-2 opacity-60">
+                    <i className="ri-lock-line text-[#71717a] text-[13px]" />
+                    <span className="text-[11px] text-[#71717a] flex-1 truncate">Sign in to send prompts...</span>
+                    <div className="w-6 h-6 rounded-[5px] bg-[#27272a] text-[#71717a] flex items-center justify-center">
+                      <i className="ri-send-plane-fill text-[11px]" />
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* ── Center Pane: Explorer + Editor + Console (col-span-6) ── */}
-              <div className="lg:col-span-6 flex flex-col bg-[#07060C] divide-y divide-[#1E1B2E]">
+              <div className="lg:col-span-6 flex flex-col bg-[#09090b] divide-y divide-[#27272a]">
                 
                 {/* Upper Area: Explorer (Left) + Editor Ready (Right) */}
-                <div className="grid grid-cols-12 flex-1 min-h-[380px] divide-x divide-[#1E1B2E]">
+                <div className="grid grid-cols-12 flex-1 min-h-[380px] divide-x divide-[#27272a]">
                   {/* Sub-Explorer (4 cols) */}
-                  <div className="col-span-4 p-3 flex flex-col justify-between bg-[#090812]">
+                  <div className="col-span-4 p-3 flex flex-col justify-between bg-[#0f0f12]">
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between text-[11.5px] text-[#D8D4E5] font-semibold">
+                      <div className="flex items-center justify-between text-[11.5px] text-[#f4f4f5] font-semibold">
                         <div className="flex items-center gap-1.5">
-                          <i className="ri-layout-grid-line text-[#38BDF8]" />
+                          <i className="ri-layout-grid-line text-[#38bdf8]" />
                           <span>Main Workspace</span>
                           <i className="ri-arrow-down-s-line text-[11px]" />
                         </div>
-                        <i className="ri-cloud-line text-[#7A758E]" />
+                        <i className="ri-cloud-line text-[#71717a]" />
                       </div>
 
-                      <div className="flex items-center justify-between text-[10px] font-bold text-[#6D6880] tracking-wider pt-1">
+                      <div className="flex items-center justify-between text-[10px] font-bold text-[#71717a] tracking-wider pt-1">
                         <span>FILES EXPLORER</span>
-                        <button className="text-[#A78BFA] hover:text-white flex items-center gap-0.5 font-medium">+ New File</button>
+                        <button className="text-[#3b82f6] hover:text-white flex items-center gap-0.5 font-medium">+ New File</button>
                       </div>
 
-                      <div className="w-full h-7 rounded-[6px] bg-[#120F20] border border-[#221D33] px-2 flex items-center gap-1.5 text-[10.5px] text-[#7A758E]">
+                      <div className="w-full h-7 rounded-[6px] bg-[#18181b] border border-[#27272a] px-2 flex items-center gap-1.5 text-[10.5px] text-[#71717a]">
                         <i className="ri-search-line text-[11px]" />
                         <span>Search files...</span>
                       </div>
                     </div>
 
                     <div className="my-auto py-10 flex flex-col items-center justify-center text-center">
-                      <i className="ri-file-text-line text-[#3F3A53] text-[28px] mb-1.5" />
-                      <span className="text-[11px] text-[#6D6880]">No files in workspace</span>
+                      <i className="ri-file-text-line text-[#27272a] text-[28px] mb-1.5" />
+                      <span className="text-[11px] text-[#71717a]">No files in workspace</span>
                     </div>
                   </div>
 
                   {/* Sub-Editor Empty State (8 cols) */}
-                  <div className="col-span-8 flex flex-col bg-[#08070E] justify-between">
+                  <div className="col-span-8 flex flex-col bg-[#09090b] justify-between">
                     {/* Tab Header */}
-                    <div className="h-8 border-b border-[#1E1B2E] px-3 flex items-center justify-between text-[11px] text-[#77728B] bg-[#0B0914]">
+                    <div className="h-8 border-b border-[#27272a] px-3 flex items-center justify-between text-[11px] text-[#71717a] bg-[#121215]">
                       <span>No files open</span>
                       <i className="ri-split-cells-horizontal text-[13px] hover:text-white cursor-pointer" />
                     </div>
 
                     {/* Editor Ready Empty State */}
                     <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                      <div className="w-10 h-10 rounded-[10px] bg-[#161225] border border-[#2B2342] flex items-center justify-center text-[#E2DFED] mb-3 shadow-inner">
+                      <div className="w-10 h-10 rounded-[10px] bg-[#18181b] border border-[#27272a] flex items-center justify-center text-[#f4f4f5] mb-3 shadow-inner">
                         <i className="ri-terminal-box-line text-[20px]" />
                       </div>
-                      <div className="text-[13.5px] font-bold text-[#E9E6F5] tracking-tight mb-1">Editor Ready</div>
-                      <div className="text-[11px] text-[#7C7790] max-w-[220px]">Select a file from the explorer to start editing</div>
+                      <div className="text-[13.5px] font-bold text-[#f4f4f5] tracking-tight mb-1">Editor Ready</div>
+                      <div className="text-[11px] text-[#71717a] max-w-[220px]">Select a file from the explorer to start editing</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Lower Area: Console Terminal */}
-                <div className="h-[180px] flex flex-col bg-[#08070E] font-mono text-[10.5px]">
+                <div className="h-[180px] flex flex-col bg-[#09090b] font-mono text-[10.5px]">
                   {/* Console Header Tabs & Actions */}
-                  <div className="h-8 border-b border-[#1E1B2E] px-3 flex items-center justify-between bg-[#0B0914] select-none">
+                  <div className="h-8 border-b border-[#27272a] px-3 flex items-center justify-between bg-[#121215] select-none">
                     <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#7C7790]" />
-                      <span className="font-semibold text-[#DFDCED] text-[11px]">CONSOLE</span>
-                      <i className="ri-arrow-down-s-line text-[#7C7790] text-[10px]" />
-                      <span className="px-1.5 py-0.5 rounded bg-[#161324] text-[#8E89A4] text-[9.5px]">0 lines</span>
-                      <div className="flex items-center gap-1 ml-2 text-[10px] text-[#7C7790]">
-                        <span className="px-1.5 py-0.5 rounded bg-[#1C182E] text-white font-semibold">All</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#71717a]" />
+                      <span className="font-semibold text-[#f4f4f5] text-[11px]">CONSOLE</span>
+                      <i className="ri-arrow-down-s-line text-[#71717a] text-[10px]" />
+                      <span className="px-1.5 py-0.5 rounded bg-[#18181b] text-[#a1a1aa] text-[9.5px]">0 lines</span>
+                      <div className="flex items-center gap-1 ml-2 text-[10px] text-[#71717a]">
+                        <span className="px-1.5 py-0.5 rounded bg-[#27272a] text-white font-semibold">All</span>
                         <span className="px-1.5 py-0.5 hover:text-white cursor-pointer">Errors</span>
                         <span className="px-1.5 py-0.5 hover:text-white cursor-pointer">Warnings</span>
                         <span className="px-1.5 py-0.5 hover:text-white cursor-pointer">Info</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2.5 text-[#6D6880] text-[12px]">
+                    <div className="flex items-center gap-2.5 text-[#71717a] text-[12px]">
                       <i className="ri-search-line hover:text-white cursor-pointer" />
                       <i className="ri-time-line hover:text-white cursor-pointer" />
                       <i className="ri-arrow-down-line hover:text-white cursor-pointer" />
@@ -369,16 +334,16 @@ const Landing = () => {
 
                   {/* Console Body */}
                   <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
-                    <i className="ri-terminal-line text-[#332E44] text-[20px] mb-1" />
-                    <div className="text-[11px] font-semibold text-[#868199]">No output yet</div>
-                    <div className="text-[10px] text-[#5D586F]">Run your project to see runtime logs here.</div>
+                    <i className="ri-terminal-line text-[#27272a] text-[20px] mb-1" />
+                    <div className="text-[11px] font-semibold text-[#71717a]">No output yet</div>
+                    <div className="text-[10px] text-[#52525b]">Run your project to see runtime logs here.</div>
                   </div>
                 </div>
 
               </div>
 
               {/* ── Right Pane: Live Preview (col-span-3) ── */}
-              <div className="lg:col-span-3 flex flex-col items-center justify-center p-6 text-center bg-[#07060C] h-full overflow-hidden">
+              <div className="lg:col-span-3 flex flex-col items-center justify-center p-6 text-center bg-[#09090b] h-full overflow-hidden">
                 <div className="mb-2 shrink-0">
                   <RobotSkeleton
                     state="idle"
@@ -388,15 +353,15 @@ const Landing = () => {
                 </div>
 
                 <div className="max-w-xs flex flex-col items-center gap-1 mb-5 shrink-0">
-                  <h3 className="text-[14px] font-semibold text-[#E8E8EA] tracking-tight">
+                  <h3 className="text-[14px] font-semibold text-[#f4f4f5] tracking-tight">
                     Preview is not running
                   </h3>
-                  <p className="text-[11px] text-[#8A879B] leading-relaxed max-w-[220px]">
+                  <p className="text-[11px] text-[#71717a] leading-relaxed max-w-[220px]">
                     Run your project to see the live result here.
                   </p>
                 </div>
 
-                <button className="px-4 py-2 rounded-[7px] text-[11.5px] font-semibold flex items-center gap-1.5 bg-[#3B82F6] hover:bg-[#2563EB] text-white shadow-md cursor-pointer transition-all">
+                <button className="px-4 py-2 rounded-[7px] text-[11.5px] font-semibold flex items-center gap-1.5 bg-[#3b82f6] hover:bg-[#2563eb] text-white shadow-md cursor-pointer transition-all">
                   <i className="ri-play-fill text-[13px]" />
                   <span>Run Project</span>
                 </button>
@@ -405,17 +370,17 @@ const Landing = () => {
             </div>
 
             {/* ═══ Bottom IDE Status Bar ═══ */}
-            <div className="h-6 border-t border-[#1E1B2E] px-3 bg-[#0B0914] flex items-center justify-between text-[10px] text-[#716D83] font-mono">
+            <div className="h-6 border-t border-[#27272a] px-3 bg-[#121215] flex items-center justify-between text-[10px] text-[#71717a] font-mono">
               <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1 text-[#D3CFE2]"><i className="ri-layout-grid-line text-[#38BDF8]" /> Main Workspace</span>
-                <span className="flex items-center gap-1 text-[#F59E0B]"><span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" /> Sandbox Idle</span>
+                <span className="flex items-center gap-1 text-[#d4d4d8]"><i className="ri-layout-grid-line text-[#38bdf8]" /> Main Workspace</span>
+                <span className="flex items-center gap-1 text-[#eab308]"><span className="w-1.5 h-1.5 rounded-full bg-[#eab308]" /> Sandbox Idle</span>
                 <span className="hidden sm:inline-block"><i className="ri-command-line" /> Cmd + Shift + P</span>
               </div>
               <div className="flex items-center gap-3">
                 <span>42 MB</span>
                 <span>Spaces: 4</span>
                 <span>UTF-8</span>
-                <span className="text-[#38BDF8]">&lt;&gt; JavaScript</span>
+                <span className="text-[#38bdf8]">&lt;&gt; JavaScript</span>
                 <span className="flex items-center gap-1"><i className="ri-layout-right-line" /> Right Dock</span>
               </div>
             </div>
