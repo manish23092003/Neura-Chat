@@ -33,8 +33,27 @@ export const UserProvider = ({ children }) => {
         }
     }, []);
 
+    // Auto-resolve the loading flag after an auth transition.
+    //
+    // When an external login flow (Google Sign-In, etc.) calls setLoading(true)
+    // before calling setUser() + navigate(), React batches those updates and
+    // renders UserAuth with loading=true (spinner) instead of the redirect guard.
+    // This effect fires after React commits the new user value and resets loading
+    // back to false — completing the transition cleanly.
+    //
+    // It is a no-op in every other scenario:
+    //   • Normal startup: user is null, so the condition never fires.
+    //   • Normal startup with token: loading is set false in .finally(), so by
+    //     the time user is set, loading is already false — condition does not fire.
+    //   • After this effect runs: loading is false, so the condition won't re-fire.
+    useEffect(() => {
+        if (user !== null && loading) {
+            setLoading(false);
+        }
+    }, [user, loading]);
+
     return (
-        <UserContext.Provider value={{ user, setUser, loading }}>
+        <UserContext.Provider value={{ user, setUser, loading, setLoading }}>
             {children}
         </UserContext.Provider>
     );

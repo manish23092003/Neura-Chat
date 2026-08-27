@@ -26,7 +26,7 @@ export default function useGoogleAuth() {
   const tokenClientRef = useRef(null)
   const callbackRef = useRef(null) // stable ref for the callback
 
-  const { setUser } = useContext(UserContext)
+  const { setUser, setLoading: setContextLoading } = useContext(UserContext)
   const navigate = useNavigate()
 
   // ── Keep callbackRef always pointing to latest handler (avoids stale closures) ──
@@ -55,6 +55,12 @@ export default function useGoogleAuth() {
       })
       console.log('[Google Auth] Successfully authenticated user:', res.data?.user?.email)
 
+      // Raise the context loading flag BEFORE setting user + navigating.
+      // React batches this with the setUser() and navigate() calls below, so
+      // UserAuth mounts at /home seeing loading=true (spinner) rather than
+      // loading=false + user=null (redirect guard). The UserContext useEffect
+      // automatically resets loading to false once the user value is committed.
+      setContextLoading(true)
       localStorage.setItem('token', res.data.token)
       setUser(res.data.user)
       toast.success('Signed in with Google!')

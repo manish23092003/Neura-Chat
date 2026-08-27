@@ -8,8 +8,16 @@ export default defineConfig(({ mode }) => ({
   // ── Development server ──────────────────────────────────────────────────
   server: {
     headers: {
-      'Cross-Origin-Embedder-Policy': 'require-corp',
-      'Cross-Origin-Opener-Policy': 'same-origin',
+      // NOTE: 'Cross-Origin-Opener-Policy: same-origin' has been intentionally
+      // removed. Setting COOP to same-origin severs window.opener between the
+      // main page and the Google Identity Services popup, which silently
+      // prevents the OAuth token callback from ever firing.
+      //
+      // 'Cross-Origin-Embedder-Policy: require-corp' is also removed here
+      // because COEP + COOP together are required for SharedArrayBuffer, but
+      // COOP must be same-origin for that pair — which breaks Google Sign-In.
+      // WebContainer routes that need SharedArrayBuffer should handle their
+      // own headers at the application level if required.
       'Service-Worker-Allowed': '/',
     },
     proxy: {
