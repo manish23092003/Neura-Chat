@@ -37,6 +37,8 @@ app.use(helmet({
         }
     } : false,
     crossOriginEmbedderPolicy: false, // Required for SharedArrayBuffer / WebContainers
+    crossOriginResourcePolicy: false, // Allow cross-origin API responses
+    crossOriginOpenerPolicy: false, // Prevent interfering with popup opener
 }));
 
 // ── CORS ─────────────────────────────────────────────────────────────────────
