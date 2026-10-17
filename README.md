@@ -135,7 +135,7 @@ flowchart TD
 
     %% AI Pipeline
     HttpServer -->|AI Query| AiQueue
-    SocketServer -->|@ai mention| AiQueue
+    SocketServer -->|AI mention| AiQueue
     AiQueue --> AiService
     AiService <-->|Prompt + Context / JSON Schema| GeminiAPI
 
