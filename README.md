@@ -10,7 +10,7 @@ NeuraChat integrates full-stack code authoring, sandboxed in-browser execution, 
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-27272a?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![React](https://img.shields.io/badge/React-18-27272a?style=flat-square&logo=react)](https://react.dev/)
 [![Gemini](https://img.shields.io/badge/AI-Gemini%202.5%20Flash-27272a?style=flat-square&logo=googlegemini)](https://ai.google.dev/)
-[![License](https://img.shields.io/badge/License-ISC-27272a?style=flat-square)](backend/package.json)
+[![License](https://img.shields.io/badge/License-ISC-27272a?style=flat-square)](LICENSE)
 
 <p align="center">
   <a href="https://neura-chat-omega.vercel.app/home"><strong>Live Demo</strong></a> •
@@ -246,6 +246,7 @@ NeuraChat/
 │   ├── vite.config.js                 # Vite build optimization and manual chunk splitting
 │   ├── package.json                   # Frontend dependencies and scripts
 │   └── .env.example                   # Frontend environment template
+├── LICENSE                            # ISC open-source license terms
 ├── SECURITY_AUDIT.md                  # Comprehensive vulnerability audit documentation
 ├── SECURITY_HARDENING_REPORT.md       # Audit remediation verification and test matrix
 └── README.md
@@ -474,7 +475,8 @@ Contributions are welcome. Please adhere to the following workflow:
 
 ## License
 
-This project is open-source under the [ISC License](backend/package.json).
+This project is open-source under the [ISC License](LICENSE).  
+See the [LICENSE](LICENSE) file for the complete license terms.
 
 ---
 
