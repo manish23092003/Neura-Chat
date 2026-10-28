@@ -3,6 +3,7 @@ import AppRoutes from './routes/AppRoutes'
 import { UserProvider } from './context/user.context'
 import { ThemeProvider } from './context/theme.context'
 import { Toaster } from 'react-hot-toast'
+import { Analytics } from '@vercel/analytics/react'
 
 const App = () => {
   return (
@@ -36,6 +37,7 @@ const App = () => {
           }}
         />
         <AppRoutes />
+        <Analytics />
       </UserProvider>
     </ThemeProvider>
   )

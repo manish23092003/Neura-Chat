@@ -11,10 +11,11 @@
   },
   "dependencies": {
     "@lifo-sh/core": "^0.10.5",
+    "@monaco-editor/react": "^4.6.0",
+    "@vercel/analytics": "^2.0.1",
     "@webcontainer/api": "^1.5.1-internal.4",
     "axios": "^1.7.9",
     "framer-motion": "^12.23.26",
-    "@monaco-editor/react": "^4.6.0",
     "jszip": "^3.10.1",
     "lucide-react": "^1.25.0",
     "markdown-to-jsx": "^7.7.1",
